@@ -86,3 +86,68 @@ for (let i = 0; i < buf.length; i++) {
   else inRun = false;
 }
 console.log('changed bytes:', diffs, 'in', runs, 'runs');
+
+/* ------------------------------------------------------------------ */
+/* long edit: replacement longer than the record slot (pool shift)     */
+/* ------------------------------------------------------------------ */
+console.log('== long edit (pool shift) ==');
+{
+  const fresh = core.decodePayload(buf, st.payloadOffset);
+  const sentinelEnd = (function () {
+    let p = sc.start + (sc.start & 1);
+    for (; p + 1 < fresh.length; p += 2) {
+      if (fresh[p] === 0xFF && fresh[p + 1] === 0xFF) return p + 2;
+    }
+    return -1;
+  })();
+  assert(sentinelEnd > 0, 'found pool sentinel');
+
+  const longText = '传感器清洁（加长说明：这是超过槽位长度的替换文本）';
+  const body2 = fresh.slice();
+  const scEdits = [{ off: 0x1FB3254 - 0x274, text: longText }];
+  const r2 = core.applyEdits(body2, scEdits, rec, { allowGrowth: true, pool: sc, payloadOffset: st.payloadOffset });
+  const info = r2.find(x => x.info);
+  console.log('   result:', r2.map(x => x.info || (x.ok ? 'OK ' + hex(x.off + 0x274) : 'FAIL ' + x.msg)).join(' | '));
+  assert(r2.some(x => x.ok && x.shifted), 'long edit applied with shift');
+  assert(!!info && /后移/.test(info.info), 'growth info reported');
+
+  const st2 = Object.assign({}, st, { payload: body2 });
+  const p2 = core.buildPatched(buf, st2);
+  assert(p2.buf.length === buf.length, 'long edit keeps file size');
+  const ver2 = core.verifyPatched(p2.buf, st2, scEdits);
+  assert(ver2.checksumOk, 'long edit checksum round-trip OK');
+  assert(ver2.allReadBackOk, 'long edit read-back OK');
+
+  let sent2 = sc.start;
+  for (; sent2 + 1 < body2.length; sent2 += 2) {
+    if (body2[sent2] === 0xFF && body2[sent2 + 1] === 0xFF) break;
+  }
+  const grow = sent2 - (sentinelEnd - 2);
+  console.log('   pool tail grew by', grow, 'B');
+  assert(grow > 0 && grow % 2 === 0, 'pool tail moved by a positive, 2-byte-aligned delta');
+
+  const editedOld = '传感器清洁';
+  function counts(list, dropOneOf) {
+    const m = new Map();
+    let dropped = false;
+    for (const t of list) {
+      if (!t) continue;
+      if (!dropped && t === dropOneOf) { dropped = true; continue; }
+      m.set(t, (m.get(t) || 0) + 1);
+    }
+    return m;
+  }
+  const cb = counts(core.extractStrings(fresh, sc.start, sentinelEnd).map(x => x.text), editedOld);
+  const ca = counts(core.extractStrings(body2, sc.start, sent2 + 2).map(x => x.text), longText);
+  let lost = 0, added = 0;
+  for (const [t, n] of cb) { const d = n - (ca.get(t) || 0); if (d > 0) lost += d; }
+  for (const [t, n] of ca) { const d = n - (cb.get(t) || 0); if (d > 0) added += d; }
+  assert(lost === 0 && added === 0, 'all untouched strings preserved (lost=' + lost + ', added=' + added + ')');
+
+  let firstDiff = -1, lastDiff = -1;
+  for (let i = 0x274; i < buf.length; i++) {
+    if (buf[i] !== p2.buf[i]) { if (firstDiff < 0) firstDiff = i; lastDiff = i; }
+  }
+  console.log('   changed file range:', hex(firstDiff), '..', hex(lastDiff));
+  assert(firstDiff >= 0x1FB3244 && lastDiff <= sent2 + 0x274, 'only the text pool changed');
+}

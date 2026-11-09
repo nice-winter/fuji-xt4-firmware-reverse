@@ -21,6 +21,7 @@
 | [08-locale-patch-web-tool.md](notes/08-locale-patch-web-tool.md) | 语言补丁工具设计：自动检测、槽位校验、校验和重算、PUA 占位渲染、测试 |
 | [09-setp-resource.md](notes/09-setp-resource.md) | SETP/UI 资源：解压段加载基址、`{name_ptr,index}` 枚举名表注册表、UI SETP ID 表 |
 | [16-fdl-glyph-extract.md](notes/16-fdl-glyph-extract.md) | FDL 图标字体逆向：cmap 公式、loca 表、矢量轮廓指令集、提取结果与未解点 |
+| [17-long-text-edits.md](notes/17-long-text-edits.md) | **超长修改**：文本池尾部后移（覆盖 FF 填充、文件尺寸不变）+ 明文/压缩段指针修正 |
 | [99-lead-findings.md](notes/99-lead-findings.md) | 早期关键发现：载荷 XOR 0xFF、0x20000 网格、内含相机资源 |
 
 > 注：编号不连续属正常——部分专题笔记为过程记录，未随本仓库发布。
@@ -28,5 +29,6 @@
 ## 快速跳转
 
 * 只想改简中文本 → [07](notes/07-ui-text-sc.md) + `web/FWUP语言补丁工具.html`
+* 文本比槽位长（超长修改）→ [17](notes/17-long-text-edits.md)
 * 想了解容器/校验和 → [01](notes/01-container.md) + [FIRMWARE-STRUCTURE.md](FIRMWARE-STRUCTURE.md)
 * 想处理图标字形 → [16](notes/16-fdl-glyph-extract.md)

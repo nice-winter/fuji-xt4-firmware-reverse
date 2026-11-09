@@ -170,7 +170,7 @@
     <div id="applyResult"></div>
     <div id="log" class="hidden"></div>
     <div class="warnbox" style="margin-top:14px">
-      <b>使用前必读</b>：① 文本受「槽位」限制（只能等长或更短，或利用记录后面的 0x00 填充），超长会被拦下；
+      <b>使用前必读</b>：① 文本可以等长/更短，也<b>支持超长</b>（自动把文本池尾部后移、并修正明文区指针；文本池剩余空间约 118 KB）；压缩段内的指针浏览器无法核对，追求完全稳妥时请用 tools/ui_patch.py；
       ② 只能用文本池里已经出现过的字符，否则相机可能显示为空白/方框；
       ③ 这是<b>二改固件</b>，刷机前请保留原始文件与官方固件以便回退；
       ④ 修改只影响界面文本，不改动代码与压缩段。
@@ -403,7 +403,7 @@
       if (!core.allowedUnit(c)) return { ok: false, msg: '不支持的字符 U+' + c.toString(16).toUpperCase() };
       enc += 2;
     }
-    if (enc + 2 > slot) return { ok: false, msg: '太长：需要 ' + (enc + 2) + 'B，槽位 ' + slot + 'B（最多 ' + maxChars(slot) + ' 字）' };
+    if (enc + 2 > slot) return { ok: true, long: true, msg: '超长：将后移文本池 +' + (enc + 2 - slot) + 'B' };
     return { ok: true, msg: '' };
   }
 
@@ -434,6 +434,7 @@
       var tdSlot = document.createElement('td');
       tdSlot.className = 'off mono';
       tdSlot.textContent = r.slot + 'B/' + maxChars(r.slot) + '字';
+      if (cur !== r.text) { var vv = validate(cur, r.slot); if (vv.long) tdSlot.textContent += ' →移位'; }
       tr.appendChild(tdSlot);
 
       var tdOld = document.createElement('td');
@@ -465,7 +466,7 @@
           if (v.ok) {
             S.edits.set(r.off, { text: t, old: r.text });
             inp.classList.remove('inp-err');
-            setTag(tdSt, '已修改', 'ok');
+            setTag(tdSt, v.long ? '已修改（超长→移位）' : '已修改', 'ok');
             tr.classList.add('sel');
           } else {
             S.edits.delete(r.off);           // 非法内容不参与生成，避免误用旧值
@@ -591,23 +592,21 @@
     }
     var c = collectEdits();
     var payload = S.st.payload.slice();
-    var results = core.applyEdits(payload, c.edits, c.rec);
-    var bad = results.filter(function (r) { return !r.ok; });
-    var okN = results.length - bad.length;
-    log.textContent += '编辑 ' + results.length + ' 条：成功 ' + okN + ' 条' + (bad.length ? '，失败 ' + bad.length + ' 条' : '') + '\n';
+    var results = core.applyEdits(payload, c.edits, c.rec,
+      { allowGrowth: true, pool: S.pool, payloadOffset: S.st.payloadOffset });
+    var infos = results.filter(function (r) { return !!r.info; });
+    var real = results.filter(function (r) { return !r.info; });
+    var bad = real.filter(function (r) { return r.ok === false; });
+    var okN = real.length - bad.length;
+    log.textContent += '编辑 ' + real.length + ' 条：成功 ' + okN + ' 条' + (bad.length ? '，失败 ' + bad.length + ' 条' : '') + '\n';
     bad.forEach(function (b) { log.textContent += '  失败 ' + hex(b.off + S.st.payloadOffset) + '：' + b.msg + '\n'; });
-    if (bad.length) {
-      var d = document.createElement('div');
-      d.className = 'warnbox';
-      d.textContent = '有 ' + bad.length + ' 条修改无法应用，已中止。请修正后再试。';
-      resBox.appendChild(d);
-      return;
-    }
+    infos.forEach(function (it) { log.textContent += '  ' + it.info + '\n'; });
 
     var state = {
       payload: payload,
       payloadOffset: S.st.payloadOffset,
       mainBodyLen: S.st.mainBodyLen,
+      pool: S.pool,
       header: S.st.header,
       origLength: S.buf.length
     };
@@ -622,7 +621,8 @@
       (patched.buf.length === S.buf.length ? '  ✓ 未改变' : '  ⚠ 改变') + '\n';
     log.textContent += '校验和：原 ' + hex(S.st.header.checksum) + ' → 新 ' + hex(patched.checksum) + '\n';
     log.textContent += '校验回读：' + (ver.checksumOk ? '✓ 通过' : '✗ 失败') + '\n';
-    log.textContent += '文本回读：' + (ver.allReadBackOk ? '✓ 全部匹配' : '✗ 有不匹配') + '\n';
+    var shiftedN = ver.readBack.filter(function (x) { return x.where === 'shifted'; }).length;
+    log.textContent += '文本回读：' + (ver.allReadBackOk ? '✓ 全部匹配' : '✗ 有不匹配') + (shiftedN ? '（' + shiftedN + ' 条已移位）' : '') + '\n';
     log.textContent += '实际改动字节：' + diff + ' B\n';
     ver.readBack.forEach(function (rb) {
       log.textContent += '  ' + hex(rb.off + S.st.payloadOffset) + '  ' + JSON.stringify(rb.text) + (rb.match ? '  ✓' : '  ✗') + '\n';

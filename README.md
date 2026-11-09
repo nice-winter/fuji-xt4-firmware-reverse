@@ -54,9 +54,12 @@
 
 1. 拖入固件（如 `FWUP0024.DAT`）；
 2. 工具自动解析容器、反推载荷长度、找 FDL 包、识别语言池并选中**简体中文**；
-3. 在列表里改文本（槽位长度有校验，超长会提示）；
+3. 在列表里改文本：**超长文本也支持**——放不下时自动把文本池尾部后移、修正明文区指针（详见 `docs/notes/17-long-text-edits.md`）；
 4. 点「生成并下载」得到完整补丁固件（大小不变、校验和已重算）；
 5. 刷回相机前请保留原始固件用于回退。
+
+> 说明：超长修改会移动该记录之后的文本池尾部。网页版只能核对明文区指针；压缩段内的指针
+> 需要 `python tools/ui_patch.py --long` 一并修正。首次使用建议只改 1–3 条验证显示。
 
 > 说明：文本中的 `U+E000..U+F8FF` 是固件内嵌图标字形，浏览器无字形会显示方块；
 > 页面已做了占位徽章渲染 + 编辑框实时预览（后续可替换为真实字形，见 §5）。
@@ -106,6 +109,7 @@ python3 tools/verify_js_patch.py                          # 独立复核 JS 生�
 * [`docs/FIRMWARE-STRUCTURE.md`](docs/FIRMWARE-STRUCTURE.md) — 总格式文档
 * [`docs/notes/07-ui-text-sc.md`](docs/notes/07-ui-text-sc.md) — 简中文本池的定位与结构
 * [`docs/notes/08-locale-patch-web-tool.md`](docs/notes/08-locale-patch-web-tool.md) — 补丁工具设计与实现
+* [`docs/notes/17-long-text-edits.md`](docs/notes/17-long-text-edits.md) — 超长文本修改（文本池后移 + 指针修正）
 * [`docs/notes/16-fdl-glyph-extract.md`](docs/notes/16-fdl-glyph-extract.md) — FDL 图标字体格式（矢量轮廓）逆向
 
 ---
@@ -115,7 +119,9 @@ python3 tools/verify_js_patch.py                          # 独立复核 JS 生�
 1. **图标字形渲染语义未闭环**：cmap/loca/记录 framing/指令集已解出，但轮廓点序与曲线类型尚未确定，
    直出图形有交叉瑕疵（见 `docs/notes/16-fdl-glyph-extract.md` §10）。页面暂用占位徽章。
 2. 工具只针对 **X-T4 / FWUP0024 v2.12 派生**固件验证；其它机型/版本可能格式不同（可作参考）。
-3. 语言池记录是**预切片段**，只能在原槽位内改文本；新增/重排字符串需先解出字符串引用索引（未做）。
+3. 语言池记录是**预切片段**：槽位内改文本最稳；**超长修改**通过后移池尾部实现（见 17），
+   但「记录按顺序/索引解析」这一前提是强推断，且运行时计算出的指针静态扫描不到——
+   首次上机建议只改 1–3 条并确认显示正常。
 
 ---
 

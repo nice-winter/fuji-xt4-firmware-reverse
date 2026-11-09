@@ -353,6 +353,134 @@
     return best || pools[0] || null;
   }
 
+  /* ------------------------------------------------------- long-text edits */
+  /*
+   * Replacement longer than the record slot: the pool is a contiguous list in
+   * the plaintext part of the payload, so the tail after the edited record is
+   * shifted right inside the existing FF padding.  Absolute pointers to the
+   * shifted records are rewritten when they sit in the plaintext area; pointers
+   * inside the FFLZ-packed sections cannot be decoded cheaply in the browser
+   * and are reported as "unverified" (use tools/ui_patch.py for a full fix).
+   */
+  var DEC_PLAIN_END = 0x260274;    // decoded offset where the first packed section starts
+  var DEC_GRID_BASE = 0x1E9E000;   // decoded start of the language-block grid
+  var POOL_BLOCK = 0x40000;
+
+  function findPoolSentinel(payload, start) {
+    var p = start + (start & 1);
+    for (; p + 1 < payload.length; p += 2) {
+      if (payload[p] === 0xFF && payload[p + 1] === 0xFF) return p + 2;
+    }
+    return -1;
+  }
+
+  function blockEndFor(pos, payloadOffset) {
+    var base = DEC_GRID_BASE - payloadOffset;
+    var k = Math.floor((pos - base) / POOL_BLOCK);
+    return base + (k + 1) * POOL_BLOCK;
+  }
+
+  function poolRecordEnd(payload, off, text) {
+    return off + text.length * 2 + 2;
+  }
+
+  function applyGrowthEdits(payload, edits, rec, pool, payloadOffset) {
+    var results = [];
+    var sentinelEnd = findPoolSentinel(payload, pool.start);
+    if (sentinelEnd < 0) {
+      return [{ ok: false, msg: '找不到文本池结束标记（0xFFFF）' }];
+    }
+    var blobEnd = sentinelEnd;
+    var plan = [];
+    for (var i = 0; i < edits.length; i++) {
+      var e = edits[i];
+      var r = rec[e.off];
+      var enc = encodeUtf16LE(e.text);
+      if (!enc.length) { results.push({ off: e.off, ok: false, msg: '不能为空' }); continue; }
+      var oldLen = r.text.length * 2 + 2;
+      var pad = ((oldLen - (enc.length + 2)) % 4 + 4) % 4;
+      var nb = new Uint8Array(enc.length + 2 + pad);
+      nb.set(enc, 0);
+      nb[enc.length] = 0; nb[enc.length + 1] = 0;
+      plan.push({ off: e.off, end: poolRecordEnd(payload, e.off, r.text), bytes: nb,
+                  delta: (enc.length + 2 + pad) - oldLen });
+    }
+    if (!plan.length) return results;
+    plan.sort(function (a, b) { return a.off - b.off; });
+    var total = 0;
+    for (var j = 0; j < plan.length; j++) total += plan[j].delta;
+    var blockEnd = blockEndFor(pool.start, payloadOffset);
+    var plainEnd = DEC_PLAIN_END - payloadOffset;
+    if (total <= 0 || blobEnd + total > blockEnd) {
+      return results.concat([{ off: 0, ok: false,
+        msg: '文本池空间不足：需要 +' + total + 'B，剩余 ' + Math.max(0, blockEnd - blobEnd) + 'B' }]);
+    }
+    // old offsets of records that will move (computed before any mutation)
+    var firstOff = plan[0].off;
+    var editedOff = {};
+    for (var m0 = 0; m0 < plan.length; m0++) editedOff[plan[m0].off] = 1;
+    var shiftedOld = [];
+    var sp = firstOff;
+    while (sp + 1 < sentinelEnd) {
+      var rs = decodeString(payload, sp, sentinelEnd);
+      if (rs && rs.text.length) {
+        if (sp > firstOff && !editedOff[sp]) shiftedOld.push(sp);
+        sp += rs.len;
+      } else {
+        sp += 2;
+      }
+    }
+    // shift from the end so earlier offsets stay valid
+    for (var k = plan.length - 1; k >= 0; k--) {
+      var pl = plan[k];
+      var tail = payload.slice(pl.end, blobEnd);
+      payload.set(pl.bytes, pl.off);
+      payload.set(tail, pl.off + pl.bytes.length);
+      blobEnd += pl.delta;
+    }
+    // new offset of an old record offset
+    function newOff(v) {
+      var d = 0;
+      for (var q = 0; q < plan.length; q++) {
+        if (plan[q].off < v) d += plan[q].delta;
+      }
+      return v + d;
+    }
+    // rewrite plaintext pointer tables
+    var fixed = 0, stale = 0;
+    if (shiftedOld.length) {
+      var lookup = {};
+      for (var si = 0; si < shiftedOld.length; si++) lookup[shiftedOld[si]] = 1;
+      for (var pos = 8; pos + 4 <= plainEnd && pos + 4 <= payload.length; pos += 4) {
+        var v = u32(payload, pos);
+        if (!lookup[v]) continue;
+        var near = false;
+        var qs = [pos - 4, pos + 4, pos - 8, pos + 8];
+        for (var qi = 0; qi < qs.length; qi++) {
+          var qq = qs[qi];
+          if (qq >= 0 && qq + 4 <= payload.length) {
+            var nv0 = u32(payload, qq);
+            if (nv0 >= pool.start && nv0 < sentinelEnd) { near = true; break; }
+          }
+        }
+        if (!near) continue;
+        var shiftPos = 0;
+        for (var q2 = 0; q2 < plan.length; q2++) {
+          if (plan[q2].off < pos) shiftPos += plan[q2].delta;
+        }
+        w32(payload, pos + shiftPos, newOff(v));
+        fixed++;
+      }
+      stale = shiftedOld.length - fixed;   // heuristic: not proof
+    }
+    for (var z = 0; z < plan.length; z++) {
+      results.push({ off: plan[z].off, ok: true, shifted: true, oldText: rec[plan[z].off].text });
+    }
+    results.push({ off: 0, info: '文本池尾部后移 +' + total + 'B；明文区指针修正 ' + fixed + ' 处。' +
+      (stale > 0 ? '压缩段内的指针浏览器无法核对，若个别菜单显示旧文本，请改用 tools/ui_patch.py 生成补丁。' : '') });
+    return results;
+  }
+
   /* --------------------------------------------------------------- edits */
   function encodeUtf16LE(text) {
     var out = new Uint8Array(text.length * 2);
@@ -377,8 +505,10 @@
    * edits: [{off, text}]  (off = payload-relative offset of the record)
    * rec:   map off -> {slot, text} from the selected pool
    */
-  function applyEdits(payload, edits, rec) {
+  function applyEdits(payload, edits, rec, opts) {
+    opts = opts || {};
     var results = [];
+    var growth = [];
     for (var i = 0; i < edits.length; i++) {
       var e = edits[i];
       var r = rec[e.off];
@@ -393,12 +523,23 @@
       }
       if (bad) { results.push({ off: e.off, ok: false, msg: '包含不支持的字符：' + bad }); continue; }
       if (enc.length + 2 > r.slot) {
+        if (opts.allowGrowth && opts.pool) { growth.push(e); continue; }
         results.push({ off: e.off, ok: false, msg: '太长：需要 ' + (enc.length + 2) + ' B，槽位只有 ' + r.slot + ' B（最多 ' + Math.floor((r.slot - 2) / 2) + ' 字）' });
         continue;
       }
       for (var q = 0; q < enc.length; q++) payload[e.off + q] = enc[q];
       for (var z = e.off + enc.length; z < e.off + r.slot; z++) payload[z] = 0;
       results.push({ off: e.off, ok: true, slot: r.slot, used: enc.length + 2, oldText: r.text });
+    }
+    if (growth.length) {
+      if (!opts.allowGrowth || !opts.pool) {
+        for (var g = 0; g < growth.length; g++) {
+          results.push({ off: growth[g].off, ok: false, msg: '太长（可开启“超长修改”以自动后移文本池）' });
+        }
+      } else {
+        var gr = applyGrowthEdits(payload, growth, rec, opts.pool, opts.payloadOffset || 0);
+        for (var h = 0; h < gr.length; h++) results.push(gr[h]);
+      }
     }
     return results;
   }
@@ -450,7 +591,18 @@
     for (var i = 0; i < edits.length; i++) {
       var e = edits[i];
       var r = decodeString(payload, e.off, Math.min(payload.length, e.off + 4096));
-      readBack.push({ off: e.off, text: r ? r.text : null, match: !!r && r.text === e.text });
+      var match = !!r && r.text === e.text;
+      var where = 'original';
+      if (!match && state.pool) {
+        var end = (state.pool.end || payload.length) + 4096;
+        var q = state.pool.start;
+        while (q + 1 < Math.min(end, payload.length)) {
+          var rr = decodeString(payload, q, Math.min(end, payload.length));
+          if (rr && rr.text === e.text) { match = true; where = 'shifted'; break; }
+          q += (rr && rr.text.length) ? rr.len : 2;
+        }
+      }
+      readBack.push({ off: e.off, text: r ? r.text : null, match: match, where: where });
     }
     return {
       checksumField: header.checksum,
@@ -476,6 +628,7 @@
     classifyStrings: classifyStrings,
     charsetOf: charsetOf,
     applyEdits: applyEdits,
+    applyGrowthEdits: applyGrowthEdits,
     analyze: analyze,
     buildPatched: buildPatched,
     verifyPatched: verifyPatched,

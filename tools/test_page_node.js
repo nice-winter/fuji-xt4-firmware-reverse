@@ -132,13 +132,17 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   check(/未改变/.test(logTxt), 'log reports file size unchanged');
   check(byId.applyResult.children.length > 0, 'result box rendered');
 
-  // oversize guard: try a too-long replacement
-  console.log('== oversize guard ==');
+  // oversize edit: now supported (text-pool tail is shifted)
+  console.log('== oversize (long) edit ==');
   const inp2 = target.children[4].children[0];
-  inp2.value = '这是一个特别特别长的替换文本用来触发超长保护机制';
+  inp2.value = '这是一个特别特别长的替换文本用来测试超长修改';
   inp2.dispatch('input');
-  check(/太长|⚠/.test(target.children[5].textContent), 'oversize edit rejected: ' + target.children[5].textContent.slice(0, 60));
-  check(/已修改 0 条/.test(byId.editStat.textContent), 'invalid edit not counted: ' + byId.editStat.textContent);
+  check(/超长/.test(target.children[5].textContent), 'oversize edit accepted as long: ' + target.children[5].textContent.slice(0, 60));
+  check(/已修改 1 条/.test(byId.editStat.textContent), 'long edit counted: ' + byId.editStat.textContent);
+  byId.btnCheck.dispatch('click');
+  const longLog = byId.log.textContent;
+  check(/后移/.test(longLog), 'long edit reports pool shift');
+  check(/文本回读：✓/.test(longLog), 'long edit read-back ok');
 
   // restore a valid edit and test the real download path (Blob capture)
   console.log('== download path (生成并下载) ==');
