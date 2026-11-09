@@ -49,6 +49,32 @@ assert(sc.strings.length === 4041, 'SC pool has 4041 records');
 const cjkCount = sc.strings.filter(s => /[\u4E00-\u9FFF]/.test(s.text)).length;
 assert(cjkCount === 3160, 'SC pool has 3160 CJK strings (got ' + cjkCount + ')');
 
+console.log('== layout map ==');
+{
+  const secs = core.detectSections(st.payload, st.payloadOffset);
+  console.log('   sections:', secs.map(x => 'sec' + x.index + ' packed=' + x.packed + ' unpacked=' + x.unpacked).join(' | '));
+  assert(secs.length === 4, 'detected 4 FFLZ sections');
+  assert(secs[0].unpacked === 7421952 && secs[1].unpacked === 9437184, 'section unpacked sizes match');
+  const lay = core.detectLayout({ payload: st.payload, payloadOffset: st.payloadOffset,
+                                  mainBodyLen: st.mainBodyLen, pools: st.pools });
+  const kinds = {};
+  lay.items.forEach(it => { kinds[it.kind] = (kinds[it.kind] || 0) + 1; });
+  console.log('   items:', JSON.stringify(kinds));
+  assert(kinds.section === 4, 'layout contains 4 section items');
+  assert(kinds.fdl >= 8, 'layout contains FDL bundles (' + kinds.fdl + ')');
+  assert(kinds.pool === st.pools.length, 'layout contains every text pool');
+  assert(lay.blocks.length === 35, 'layout exposes 35 language blocks');
+  assert(lay.items[0].start === 0 && lay.items[lay.items.length - 1].end === lay.total,
+    'layout spans the whole file');
+  let sortedOk = true, inRange = true;
+  for (let i = 0; i < lay.items.length; i++) {
+    if (i > 0 && lay.items[i].start < lay.items[i - 1].start) sortedOk = false;
+    if (lay.items[i].start < 0 || lay.items[i].end > lay.total) inRange = false;
+  }
+  assert(sortedOk, 'layout items sorted by start');
+  assert(inRange, 'layout items inside the file');
+}
+
 console.log('== edit ==');
 const rec = {};
 for (const s of sc.strings) rec[s.off] = { slot: s.slot, text: s.text };

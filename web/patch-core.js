@@ -171,6 +171,107 @@
     return out;
   }
 
+  /* ------------------------------------------------------ firmware layout */
+  // decoded offsets of the four FFLZ section headers (payload = decoded - payloadOffset)
+  var SECTION_HEADER_DEC = [0x260274, 0x5C0274, 0xAE0274, 0x1A00274];
+  var FDL_BLOCK_GRID_DEC = 0x1E9E000;   // language blocks start here, 0x40000 apart
+  var FDL_BLOCK_SIZE = 0x40000;
+  var FDL_BLOCK_COUNT = 35;
+
+  function detectSections(payload, payloadOffset) {
+    var out = [];
+    for (var k = 0; k < SECTION_HEADER_DEC.length; k++) {
+      var off = SECTION_HEADER_DEC[k] - payloadOffset;
+      if (off < 0 || off + 20 > payload.length) continue;
+      var u = u32(payload, off), pk = u32(payload, off + 4);
+      var pages = u32(payload, off + 8), psz = u32(payload, off + 12), tag = u32(payload, off + 16);
+      if (u <= 0 || pk <= 0 || off + 20 + pk > payload.length) continue;
+      out.push({ index: k, header: off, start: off + 20, end: off + 20 + pk,
+                 unpacked: u, packed: pk, pages: pages, pageSize: psz, tag: tag });
+    }
+    return out;
+  }
+
+  function sampleAllFF(payload, a, b) {
+    var step = Math.max(4096, Math.floor((b - a) / 256));
+    for (var p = a; p < b; p += step) {
+      var q = Math.min(b, p + 64);
+      for (var i = p; i < q; i++) if (payload[i] !== 0xFF) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Layout of one firmware file in FILE coordinates.
+   * items: header / section / fdl / pool / tail / free / other, sorted by start.
+   * blocks: the 35 language blocks of FDL bundle #0 (for the zoomed bar).
+   */
+  function detectLayout(state) {
+    var payload = state.payload, po = state.payloadOffset || 0, L = payload.length;
+    var items = [], secs = detectSections(payload, po);
+    items.push({ kind: 'header', start: 0, end: po, label: '容器头（明文）',
+                 note: 'os_type / 版本 / 7 个校验和 / region 表' });
+    for (var i = 0; i < secs.length; i++) {
+      var s = secs[i];
+      items.push({ kind: 'section', start: po + s.start, end: po + s.end,
+                   label: '压缩段 sec' + s.index,
+                   note: 'FFLZ · 打包 ' + s.packed + ' B · 解压 ' + s.unpacked + ' B · ' + s.pages + ' 页' });
+    }
+    var bundles = findFdlBundles(payload);
+    for (var b = 0; b < bundles.length; b++) {
+      var size = (b + 1 < bundles.length) ? bundles[b + 1] - bundles[b] : L - bundles[b];
+      items.push({ kind: 'fdl', start: po + bundles[b], end: po + bundles[b] + size,
+                   label: 'FDL Font 包 #' + b, note: '字体位图 / 图标字形 / 多语言文本池' });
+    }
+    var mainLen = state.mainBodyLen || L;
+    var tailEnd = Math.min(po + L, po + mainLen + 0x1000000);
+    items.push({ kind: 'tail', start: po + mainLen, end: po + L,
+                 label: '尾部 region 组 R0..R5', note: '6 个独立校验区（更新校验）' });
+    var pools = state.pools || [];
+    for (var q = 0; q < pools.length; q++) {
+      var p = pools[q];
+      items.push({ kind: 'pool', start: po + p.start, end: po + p.end,
+                   label: '文本池 ' + langLabel(p.lang),
+                   note: p.strings.length + ' 条记录 · ' + (p.end - p.start) + ' B' });
+    }
+    // gaps: FF padding vs other data
+    items.sort(function (a, b) { return a.start - b.start; });
+    var filled = [];
+    var cursor = 0;
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j];
+      if (it.start > cursor && it.start - cursor >= 4096) {
+        var a = cursor - po, z = it.start - po;
+        var free = (a >= 0 && z <= L && sampleAllFF(payload, a, z));
+        filled.push({ kind: free ? 'free' : 'other', start: cursor, end: it.start,
+                      label: free ? '空白（0xFF 填充）' : '其它数据',
+                      note: free ? '未使用/擦除态' : '明文代码/数据/资源' });
+      }
+      filled.push(it);
+      cursor = Math.max(cursor, it.end);
+    }
+    if (cursor < po + L && po + L - cursor >= 4096) {
+      var a2 = cursor - po;
+      var free2 = (a2 >= 0 && sampleAllFF(payload, a2, L));
+      filled.push({ kind: free2 ? 'free' : 'other', start: cursor, end: po + L,
+                    label: free2 ? '空白（0xFF 填充）' : '其它数据',
+                    note: free2 ? '未使用/擦除态' : '明文代码/数据/资源' });
+    }
+    // bundle #0 language blocks
+    var blocks = [];
+    if (bundles.length) {
+      var base = FDL_BLOCK_GRID_DEC - po;
+      for (var k2 = 0; k2 < FDL_BLOCK_COUNT; k2++) {
+        var bst = base + k2 * FDL_BLOCK_SIZE;
+        var ben = Math.min(bst + FDL_BLOCK_SIZE, L);
+        if (bst < 0 || bst >= L) break;
+        blocks.push({ index: k2, start: po + bst, end: po + ben });
+      }
+    }
+    return { items: filled, sections: secs, bundles: bundles, blocks: blocks,
+             pools: pools, total: po + L, payloadOffset: po, mainBodyLen: mainLen };
+  }
+
   /* --------------------------------------------------- text-pool detection */
   function windowCounts(payload, start, end) {
     var c = { text: 0, han: 0, kana: 0, hangul: 0, cyr: 0, arab: 0, thai: 0, latin: 0, nul: 0, units: 0 };
@@ -622,6 +723,8 @@
     checksumOf: checksumOf,
     detectMainBody: detectMainBody,
     findFdlBundles: findFdlBundles,
+    detectSections: detectSections,
+    detectLayout: detectLayout,
     detectPools: detectPools,
     pickBestPool: pickBestPool,
     extractStrings: extractStrings,

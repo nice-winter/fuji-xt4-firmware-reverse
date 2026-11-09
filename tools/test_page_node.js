@@ -54,6 +54,7 @@ const IDS = ['drop', 'file', 'fileErr', 'infoSection', 'infoGrid', 'infoNote', '
   'poolsWrap', 'editorSection', 'poolName', 'search', 'onlyEdited', 'onlyCJK', 'pageSize',
   'btnExportJson', 'importJson', 'btnImportJson', 'btnResetAll', 'editStat', 'editorWrap',
   'rows', 'pager', 'prevPage', 'pageInfo', 'nextPage', 'charHint', 'outSection',
+  'layoutSection', 'layoutBar', 'layoutLegend', 'fdlBar', 'layoutNote', 'layoutTable',
   'btnApply', 'btnCheck', 'applyHint', 'applyResult', 'log'];
 IDS.forEach(id => { byId[id] = new El('div'); });
 byId.pageSize.value = '100';
@@ -105,6 +106,9 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
   check(!!poolBody && poolBody.children.length >= 20,
     'pool table rendered (' + (poolBody ? poolBody.children.length : 0) + ' rows)');
   check(/简体中文/.test(byId.poolName.textContent), 'SC pool auto-selected: ' + byId.poolName.textContent.slice(0, 40));
+  check(byId.layoutBar.children.length >= 10, 'layout bar rendered (' + byId.layoutBar.children.length + ' segments)');
+  check(byId.layoutTable.children.length >= 10, 'layout table rendered (' + byId.layoutTable.children.length + ' rows)');
+  check(byId.fdlBar.children.length >= 35, 'FDL language-block bar rendered (' + byId.fdlBar.children.length + ' blocks)');
 
   const tbody = byId.rows;
   check(tbody.children.length === 100, 'first page shows 100 rows (' + tbody.children.length + ')');
