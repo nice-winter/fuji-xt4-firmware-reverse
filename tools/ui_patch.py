@@ -30,7 +30,7 @@ import os
 
 
 ROOT = os.environ.get("XT4_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DAT = os.path.join(ROOT, "FWUP0024_aefix_1106.DAT")
+DAT = os.path.join(ROOT, "FWUP0024.DAT")
 TSV = os.path.join(ROOT, "out", "ui_sc_strings.tsv")
 HDR = 0x274
 MAIN_BODY = 0x2FC0020

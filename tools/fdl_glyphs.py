@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """fdl_glyphs.py -- read-only extractor for Fujifilm "FDL Font" glyph outlines (X-T4 firmware).
 
-Target : FWUP0024_affix_1108.DAT  (os=6, v2.12-derived, "二改")
-Image  : out/f1108/decoded.bin   (logical image = file[0:0x274] + ~file[0x274:])
-Ref    : out/fofficial/decoded.bin (official build, same layout, used for cross-checks)
+Target : FWUP0024.DAT  (os=6, v2.12-derived, "二改")
+Image  : out/fw/decoded.bin   (logical image = file[0:0x274] + ~file[0x274:])
+Ref    : out/official/decoded.bin (official build, same layout, used for cross-checks)
 
 WHAT IS IMPLEMENTED (all discovered/verified in this session; see
 notes/16-fdl-glyph-extract.md for the evidence chain):
@@ -70,14 +70,14 @@ from collections import Counter, OrderedDict
 from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-AFFIX = os.path.join(ROOT, "out", "f1108", "decoded.bin")
-OFFICIAL = os.path.join(ROOT, "out", "fofficial", "decoded.bin")
+CUR_BUILD = os.path.join(ROOT, "out", "fw", "decoded.bin")
+OFFICIAL = os.path.join(ROOT, "out", "official", "decoded.bin")
 OUTDIR = os.path.join(ROOT, "out", "glyphs")
 
 MAGIC = b"FDL Font\x00"
 BUNDLE0 = 0x1DA0274
 BLOCK0 = 0x1E9E000
-INFO_PAYLOAD = 0xA31C2          # affix build
+INFO_PAYLOAD = 0xA31C2          # current build
 INFO_SIZE = 0x7C
 GLYPH_BLOB = 0x3DCED            # == descriptor record offset
 CMAP_BASE = 0xE120              # glyph id = codepoint - CMAP_BASE
@@ -92,7 +92,7 @@ OPCODE_FORM = {
 
 
 # ---------------------------------------------------------------- image / table
-def load(path=AFFIX):
+def load(path=CUR_BUILD):
     with open(path, "rb") as f:
         return f.read()
 
@@ -448,7 +448,7 @@ def main(argv=None):
     ap.add_argument("--size", type=int, default=256)
     ap.add_argument("--official", action="store_true")
     a = ap.parse_args(argv)
-    buf = load(OFFICIAL if a.official else AFFIX)
+    buf = load(OFFICIAL if a.official else CUR_BUILD)
     if a.cmd == "report":
         os.makedirs(OUTDIR, exist_ok=True)
         lines = []

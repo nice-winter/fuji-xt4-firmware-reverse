@@ -3,7 +3,7 @@
 """
 hdr.py -- FWUP0024 (Fujifilm X-T4) 顶层容器头只读解析器
 =========================================================
-对 C:\\Users\\90732\\Desktop\\dev\\xt4\\FWUP0024_aefix_1106.DAT 只读，不写任何文件。
+对 C:\\Users\\90732\\Desktop\\dev\\xt4\\FWUP0024.DAT 只读，不写任何文件。
 
 已确认的顶层模型（证据见控制台表格与 notes/01-container.md）:
   * os_type                              = u32 LE @0x000 = 6
@@ -42,7 +42,7 @@ try:
 except Exception:  # numpy 缺失时退化（较慢，但只读逻辑不变）
     np = None
 
-DEFAULT = os.path.join(ROOT, "FWUP0024_aefix_1106.DAT")
+DEFAULT = os.path.join(ROOT, "FWUP0024.DAT")
 
 PAYLOAD_BASE = 0x274          # 取反载荷物理起点（校验和/分段证据支持）
 DOC_HEADER_END = 0x378        # 公开资料 (fujihack patcher) 所述 type-6 扩展头结尾
@@ -372,7 +372,7 @@ def main():
         d = bytearray(f.read())
     if np is not None:
         d = np.frombuffer(bytes(d), dtype=np.uint8)
-    print("hdr.py -- FWUP0024_aefix_1106.DAT 顶层容器头解析 (只读)")
+    print("hdr.py -- FWUP0024.DAT 顶层容器头解析 (只读)")
     print(f"python: {sys.version.split()[0]}  numpy: {'yes' if np is not None else 'no'}")
     file_identity(d)
     model_code_area(d)

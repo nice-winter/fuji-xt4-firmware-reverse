@@ -1,6 +1,6 @@
 # X-T4 固件「界面本地化文本（简体中文）」逆向与修改指南
 
-> 对象：`FWUP0024_aefix_1106.DAT`（X-T4 二改固件，基于官方 v2.12）
+> 对象：`FWUP0024.DAT`（X-T4 二改固件，基于官方 v2.12）
 > 原则：**只读分析；修改一律产出新文件**，原始 `.DAT` 未改动（MD5 仍 `73293B4F50269AD07FCD3AEF79B20D16`）。
 > 相关：`FIRMWARE-STRUCTURE.md`（整体结构）、`01-container.md`（头部/校验和）
 
@@ -150,7 +150,7 @@ $py = "C:\Users\90732\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\
 # 2) 打补丁（只读原文件，产出新文件）
 & $py tools\ui_patch.py --list                       # 列前 20 条
 & $py tools\ui_patch.py --demo out\demo_patched.DAT  # 样例：改 3 条并验证
-& $py tools\ui_patch.py --patch mypatch.json out\FWUP0024_zh.DAT
+& $py tools\ui_patch.py --patch mypatch.json out\FWUP0024.DAT
 ```
 
 `mypatch.json` 格式：
@@ -213,7 +213,7 @@ $py = "C:\Users\90732\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\
 ## 6. 上机与回退
 
 1. 修改产物是**完整 `.DAT`**（尺寸不变、校验和正确），可直接按官方流程放 SD 卡根目录、相机内执行更新（流程见 `03-prior-art.md`）。
-2. **务必保留**：① 原始 `FWUP0024_aefix_1106.DAT`；② 官方 v2.12 原件（已在 `out/official/FWUP0024_v212_official.DAT`）。
+2. **务必保留**：① 原始 `FWUP0024.DAT`；② 官方 v2.12 原件（已在 `out/official/FWUP0024.DAT`）。
 3. 建议先只改 1–3 条、刷机确认显示正常，再做批量替换。
 4. 相机拒绝更新时优先怀疑：校验和未同步、文本超出 slot、文件被截断/填充尺寸改变（本工具不会改变文件尺寸）。
 

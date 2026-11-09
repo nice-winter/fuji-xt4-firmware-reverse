@@ -1,7 +1,7 @@
 # 16 — FDL Font 字形/位图提取：PUA 图标 → PNG + sprite sheet
 
-> 目标：`FWUP0024_affix_1108.DAT`（X-T4 二改，os=6，v2.12 派生）；逻辑镜像 `out/f1108/decoded.bin`
-> 对照：`out/fofficial/decoded.bin`（官方）
+> 目标：`FWUP0024.DAT`（X-T4 二改，os=6，v2.12 派生）；逻辑镜像 `out/fw/decoded.bin`
+> 对照：`out/official/decoded.bin`（官方）
 > 全程**只读**两个 `.DAT`（只 `open(...,"rb")`），产物只写 `out/glyphs/`、`out/_glyph_p*.txt`、`tools/fdl_glyphs.py`
 > 工具：`tools/fdl_glyphs.py`（`report` / `export`）；探针：`tools/_glyph_p1..p19.py`
 > 标记：【确证】= 双向验证 / 精确断言；【强】= 多项独立证据；【推测】= 未证实。
@@ -91,7 +91,7 @@ empty  : u16 flags  | u16 advance | 0x0000 | 0x0000               ← 6B，只�
 证据链：
 1. 表长固定 5638；SC 池里 394 个 PUA 码位 min=`U+E120`、max=`U+F725`，**max-min = 5637 = 5638-1**；
 2. 在 `base=0xE120` 下 394 个 id 全部 **0..5637**，且 **394/394 命中“有轮廓”的字形**（有轮廓 id 只占全表 21.4%）；
-3. 备注 14 里点名的码位也全部落在有轮廓字形上：`U+F1B5→4245`、`U+F1B3→4243`、`U+F1B4→4244`、`U+F2EF→4559`、`U+F2F7..F2FA→4567..4570`、`U+F06D→3917`、`U+F06A→3914`、`U+F06F→3919`、`U+F056→3894`、`U+F445→4901`（二改新增 REALA）、`U+F3EE→4814`（二改新增 NOSTALGIC）；
+3. 备注 14 里点名的码位也全部落在有轮廓字形上：`U+F1B5→4245`、`U+F1B3→4243`、`U+F1B4→4244`、`U+F2EF→4559`、`U+F2F7..F2FA→4567..4570`、`U+F06D→3917`、`U+F06A→3914`、`U+F06F→3919`、`U+F056→3894`、`U+F445→4901`（二改新增 示例标签 A）、`U+F3EE→4814`（二改新增 示例标签 B）；
 4. 未用到的码位落在“共用偏移的空字形”区间，与“字体按连续码位区间建表、未定义者给空轮廓”一致。
 
 > 因此前端只需 `id = cp - 0xE120` 即可定位字形；**不需要额外 cmap 表**（包里也确实没有）。
@@ -147,7 +147,7 @@ out/glyphs/
   sprite_stroke.png  + sprite_stroke.json
   glyph_index.tsv   codepoint / glyph_id / kind / advance / ncontours / npoints / bbox256 / decoded
   glyph_map.json    {"0xf1b5": {gid, kind, advance, ncontours, npoints, bbox, decoded}, ...}
-  preview_known_icons.png   10 个已知图标（含二改新增 REALA/NOSTALGIC）的 fill/stroke 对照
+  preview_known_icons.png   10 个已知图标（含二改新增 示例标签 A/示例标签 B）的 fill/stroke 对照
   fdl_glyph_report.txt
 ```
 

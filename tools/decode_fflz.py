@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """FFLZ (Fujifilm LZ77 variant) decompressor + DAT section extractor.
 
-Verified against FWUP0024_aefix_1106.DAT: all four sections decode to exactly the
+Verified against FWUP0024.DAT: all four sections decode to exactly the
 `unpacked_size` declared in their header, and the SHA-256 of the outputs match the
 independently implemented reference decoder.
 
@@ -37,7 +37,7 @@ import os
 
 
 ROOT = os.environ.get("XT4_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DAT = os.path.join(ROOT, "FWUP0024_aefix_1106.DAT")
+DAT = os.path.join(ROOT, "FWUP0024.DAT")
 OUTDIR = os.path.join(ROOT, "out")
 HDR = 0x274          # plaintext header length == payload alignment offset
 

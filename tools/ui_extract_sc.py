@@ -76,7 +76,7 @@ with io.open(TSV, "w", encoding="utf-8") as f:
         f.write("0x%08X\t0x%08X\t%d\t%d\t%s\n" % (off, off - 0x274, slot, blen, text.replace("\t", " ")))
 
 with io.open(TXT, "w", encoding="utf-8") as f:
-    f.write("# Simplified-Chinese UI strings — FWUP0024_aefix_1106.DAT\n")
+    f.write("# Simplified-Chinese UI strings — FWUP0024.DAT\n")
     f.write("# decoded_offset  slot_bytes  text\n")
     for off, slot, blen, text in ui:
         f.write("0x%08X  slot=%4d  %s\n" % (off, slot, text))

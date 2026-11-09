@@ -1,7 +1,7 @@
 # Lead 关键发现：载荷是 XOR 0xFF 取反存储（截至 2026-11-06 23:5x）
 
 ## 结论 1（最重要）：DAT 载荷是「逐字节取反」存储
-- 文件 `FWUP0024_aefix_1106.DAT`：
+- 文件 `FWUP0024.DAT`：
   - `0x000000..0x000378`：**明文**容器头（ASCII 数字表 + 二进制表，见下）。
   - `0x000378` 之后：**全部 XOR 0xFF**（即按位取反）后才是真正的固件内容。
 - 证据（取反后出现、原样不存在的字符串）：
@@ -24,7 +24,7 @@
 
 ## 结论 3：内含真实相机资源
 取反后 `0x468DB9` 起出现 `RIFF WAVEfmt`、`xpacket begin=`（XMP）、大量 UI 资源名：
-`MENU_FLASH_MODE_TTL`、`STROBE_TTL`、`ISO_BRACK`、`FILM_PROVIA`、`INSTAX_PASSWORD_DIGIT4`、`LENS_DETOFF` …（数万条）
+`MENU_FLASH_MODE_TTL`、`STROBE_TTL`、`ISO_BRACK`、`某 ASCII 串`、`INSTAX_PASSWORD_DIGIT4`、`LENS_DETOFF` …（数万条）
 → 解码后的镜像可正常做字符串/资源分析。
 
 ## 对成员的要求

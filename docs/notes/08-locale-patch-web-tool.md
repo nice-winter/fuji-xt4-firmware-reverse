@@ -1,6 +1,6 @@
 # 08 — 固件语言补丁网页工具（HTML + JS）使用与实测报告
 
-> 目标固件：`FWUP0024_affix_1108.DAT`（X-T4 二次构建，os=6 / v2.12 / 51,278,280 B / MD5 `695B0F76…`）
+> 目标固件：`FWUP0024.DAT`（X-T4 二次构建，os=6 / v2.12 / 51,278,280 B / MD5 `695B0F76…`）
 > 交付物：**纯前端单页工具**，无后端、无网络上传；拖入 `.DAT` → 逐条改简体中文 → 下载改好的 `.DAT`。
 > 原始固件只读，工具不修改磁盘上的原文件。
 
@@ -15,9 +15,9 @@
 | `tools/build_single_html.py` | 把开发版打包成单文件（改完 `web/` 后运行一次即可） |
 | `tools/test_core_node.js` | 核心逻辑测试（对真实固件跑：解析/检测/改写/校验） |
 | `tools/test_page_node.js` | 页面级冒烟测试（用最小 DOM 桩在 Node 里跑整条 UI 流程，含下载与 JSON 导入导出） |
-| `tools/test_both_versions.js` | 版本无关性检查（同一套代码跑 1106 / 1108 两个固件） |
+| `tools/test_both_versions.js` | 版本无关性检查（同一套代码跑 早期版 / 当前版 两个固件） |
 | `tools/verify_js_patch.py` | 用 Python 独立复核 JS 生成的补丁文件（校验和/文本回读/差异字节） |
-| `out/patched_1108_js.DAT` | 测试产物：JS 工具生成的补丁固件（4 条文本被改） |
+| `out/patched_js.DAT` | 测试产物：JS 工具生成的补丁固件（4 条文本被改） |
 | `out/js_patch_verify.txt` | 上面文件的 Python 独立复核结果 |
 
 ---
@@ -25,13 +25,13 @@
 ## 2. 使用方法（5 步）
 
 1. 用 Chrome / Edge 打开 `web/FWUP语言补丁工具.html`（双击即可，无需服务器）。
-2. 把 `FWUP0024_affix_1108.DAT` 拖进虚线框（或点击选择文件）。工具会自动解析并列出检测到的 27 个语言文本池。
+2. 把 `FWUP0024.DAT` 拖进虚线框（或点击选择文件）。工具会自动解析并列出检测到的 27 个语言文本池。
 3. 「选择要编辑的语言文本池」里默认已选 **简体中文 ★推荐**（4,041 条记录；也可改其它语言）。
 4. 在「编辑文本」里搜索/翻页，把「新文本」输入框改成想要的文字：
    * 每行显示 `槽位 12B/5字`，即这条最多能写几个汉字（等长或缩短都安全，可在槽位内加长）；
    * 超长/非法字符会立刻标红并**不参与生成**（不会偷偷用旧值）；
    * 「导出修改 JSON」/「导入修改 JSON」支持批量维护替换表。
-5. 点「生成并下载 .DAT」→ 得到 `FWUP0024_affix_1108_lang.DAT`（同尺寸、校验和已重算），把文件按官方流程放 SD 卡刷机即可。
+5. 点「生成并下载 .DAT」→ 得到 `FWUP0024.DAT`（同尺寸、校验和已重算），把文件按官方流程放 SD 卡刷机即可。
 
 页面右下会打印日志：文件大小是否未变、校验和 原→新、校验回读、文本回读、实际改动字节数、逐条回读结果。
 
@@ -57,12 +57,12 @@
 
 | 固件 | 校验和 | 载荷起点 | 主载荷 | 检测池 | 简体中文池 | 记录数 | 含汉字 |
 |---|---|---|---|---|---|---|---|
-| `FWUP0024_aefix_1106.DAT` | `0x56B4BFF5` | `0x274` | `0x2FC0020` | 27 | `0x1FB3244..0x1FC05F8` | 4,041 | 3,160 |
-| `FWUP0024_affix_1108.DAT` | `0x56BA65C6` | `0x274` | `0x2FC0020` | 27 | `0x1FB3244..0x1FC05F8` | 4,041 | 3,160 |
+| `FWUP0024.DAT` | `0x56B4BFF5` | `0x274` | `0x2FC0020` | 27 | `0x1FB3244..0x1FC05F8` | 4,041 | 3,160 |
+| `FWUP0024.DAT` | `0x56BA65C6` | `0x274` | `0x2FC0020` | 27 | `0x1FB3244..0x1FC05F8` | 4,041 | 3,160 |
 
 两次分析各约 0.79 s（Node/桌面端；浏览器同量级）。两版固件的简体中文池**逐字节相同**，所以测试可互换。
 
-### 4.2 核心逻辑测试（`tools/test_core_node.js`，对 affix_1108）
+### 4.2 核心逻辑测试（`tools/test_core_node.js`，对 当前二改）
 
 ```
 OK os_type == 6 / version == 2.12 / payload offset == 0x274 / main body == 0x2FC0020 / 校验和公式验证通过
@@ -82,7 +82,7 @@ changed bytes: 15 in 4 runs
 - 「导出修改 JSON」→ 正确输出 1 条 `{offset, payload_offset, lang, old, new}`。
 - **单文件版与开发版均全部通过**（`ALL PAGE CHECKS PASSED`）。
 
-### 4.4 独立复核（Python，`tools/verify_js_patch.py` 对 `out/patched_1108_js.DAT`）
+### 4.4 独立复核（Python，`tools/verify_js_patch.py` 对 `out/patched_js.DAT`）
 
 ```
 文件大小：51,278,280 → 相同
@@ -113,7 +113,7 @@ R0..R5 六个 region 校验和：全部 OK
 - 只能尽量用池内已出现的字符（页面会提示该池共用了多少个不同字符；简中池为 1,134 个）。用生僻字可能显示为空白/方框。
 - 文本是**预换行片段**，替换时保持接近的显示宽度（汉字/全角=2 列）可避免菜单排版溢出。
 - 单字 PUA（`U+E1xx`、`U+F0xx–F7xx`）是内嵌图标 token，不要删。
-- 刷机前保留原文件与官方固件（`out/official/FWUP0024_v212_official.DAT`）以便回退。
+- 刷机前保留原文件与官方固件（`out/official/FWUP0024.DAT`）以便回退。
 
 ---
 
@@ -154,7 +154,7 @@ cd C:\Users\90732\Desktop\dev\xt4
 & $node tools\test_page_node.js "web\FWUP语言补丁工具.html"
 
 # 版本无关性
-& $node tools\test_both_versions.js FWUP0024_aefix_1106.DAT FWUP0024_affix_1108.DAT
+& $node tools\test_both_versions.js FWUP0024.DAT FWUP0024.DAT
 
 # 独立复核 JS 生成的补丁
 & $py tools\verify_js_patch.py

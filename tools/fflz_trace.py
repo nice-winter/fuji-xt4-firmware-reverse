@@ -8,7 +8,7 @@ import io, struct, os
 import os
 
 ROOT = os.environ.get("XT4_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-raw = open(os.path.join(ROOT, "FWUP0024_affix_1108.DAT"), "rb").read()
+raw = open(os.path.join(ROOT, "FWUP0024.DAT"), "rb").read()
 HDR = 0x274
 logical = raw[:HDR] + bytes(b ^ 0xFF for b in raw[HDR:])
 pay = logical[HDR:]

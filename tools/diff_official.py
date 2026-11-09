@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Diff  FWUP0024_aefix_1106.DAT  vs  official Fujifilm X-T4 v2.12 FWUP0024.DAT.
+"""Diff  FWUP0024.DAT  vs  official Fujifilm X-T4 v2.12 FWUP0024.DAT.
 
 Read-only analysis; produces every number quoted in notes/06-diff-official.md.
 
@@ -34,8 +34,8 @@ import numpy as np
 
 ROOT = os.environ.get("XT4_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WD = ROOT
-OURS = os.path.join(WD, "FWUP0024_aefix_1106.DAT")
-OFFI = os.path.join(WD, "out", "official", "FWUP0024_v212_official.DAT")
+OURS = os.path.join(WD, "FWUP0024.DAT")
+OFFI = os.path.join(WD, "out", "official", "FWUP0024.DAT")
 SECDIR = os.path.join(WD, "out", "sections")
 OUTDIR = os.path.join(WD, "out", "official")
 HDR_LEN = 0x378
@@ -160,7 +160,7 @@ def main():
     adec, bdec = decoded_view(a), decoded_view(b)
 
     p("=" * 78)
-    p("FWUP0024 diff:  aefix build  vs  official X-T4 v2.12")
+    p("FWUP0024 diff:  modified build  vs  official X-T4 v2.12")
     p("=" * 78)
     p()
     p("== 1. files ==")

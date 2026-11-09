@@ -1,7 +1,7 @@
 # 共享环境与约定 (Shared environment)
 
 ## 目标文件 (read-only, 绝不修改)
-- Path: `C:\Users\90732\Desktop\dev\xt4\FWUP0024_aefix_1106.DAT`
+- Path: `C:\Users\90732\Desktop\dev\xt4\FWUP0024.DAT`
 - Size: 51,278,280 bytes = `0x30E71C8`
 - MD5: `73293B4F50269AD07FCD3AEF79B20D16`
 - SHA-256: `618A3EDD307496E93CACB38F51AC128A904E2BB713DE9022D37BC8FE162C783F`

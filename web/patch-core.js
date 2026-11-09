@@ -3,7 +3,7 @@
  * ------------------------------------------------------------------
  * Pure logic, no DOM.  The page (index.html) only does UI.
  *
- * File model (verified on X-T4 FWUP0024 aefix_1106 / affix_1108):
+ * File model (verified on X-T4 FWUP0024):
  *   bytes 0x000 .. payloadOffset-1   plaintext container header
  *   bytes payloadOffset .. EOF       firmware payload, bit-inverted (XOR 0xFF)
  *   payload[0 .. mainBodyLen)        protected by the checksum field in the header

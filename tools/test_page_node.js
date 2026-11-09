@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Minimal-DOM smoke test: run web/index.html's inline app script in Node,
-   feed it the real affix_1108 firmware, edit a string, and press "只校验". */
+   feed it the real FWUP0024 firmware, edit a string, and press "只校验". */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -81,9 +81,9 @@ if (blocks.length < 1) { console.error('no inline script found'); process.exit(1
 blocks.forEach(b => eval(b));
 
 /* ------------------------------- run flow ------------------------------- */
-const buf = new Uint8Array(fs.readFileSync(path.join(ROOT, 'FWUP0024_affix_1108.DAT')));
+const buf = new Uint8Array(fs.readFileSync(path.join(ROOT, 'FWUP0024.DAT')));
 const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-const fakeFile = { name: 'FWUP0024_affix_1108.DAT', arrayBuffer: () => Promise.resolve(ab) };
+const fakeFile = { name: 'FWUP0024.DAT', arrayBuffer: () => Promise.resolve(ab) };
 
 let failed = 0;
 function check(cond, msg) {

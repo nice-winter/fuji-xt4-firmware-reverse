@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """setp_decode.py -- decoder for the SETP / UI resource layer of the Fujifilm X-T4
-firmware (FWUP0024_affix_1108.DAT, and the aefix_1106 build for cross-check).
+firmware (FWUP0024.DAT, and an earlier build for cross-check).
 
 What this tool does
 -------------------
@@ -16,7 +16,7 @@ What this tool does
               The ASCII runs are ordinary FFLZ literal runs, so the "control bytes"
               0x80/0x81 are LZ77 back-reference tokens (see FIRMWARE-STRUCTURE §7).
               Consequence: the real SETP/UI resources must be searched in the
-              *decompressed* sections out/f1108/sections/sec{0,1,2,3}.bin.
+              *decompressed* sections out/fw/sections/sec{0,1,2,3}.bin.
 
 2) `pools`    Dump the NUL-terminated, 4-byte aligned ASCII identifier pools that
               exist in the decompressed sections (sec0 and sec1).
@@ -28,21 +28,16 @@ What this tool does
               is a concatenation of many small "enum name tables"; inside one table
               `index` runs 0,1,2,... so **index == enum value**.  This is the core
               structural result: it gives numeric values for all UI enums
-              (UI_FILM_SIM_*, UI_RAW_DEV_FILM_SIM_*, UI_MENUCOM_ITEM_*, UI_SETP_* ...).
+              (UI_MENUCOM_ITEM_*, UI_SETP_*, UI_MENU_KIND_* ...).
 
-4) `filmsim`  Print the film-simulation enum tables (shooting + RAW development)
-              with offsets, values and (for the shooting enum) the FDL display label
-              obtained from the UTF-16 text resource.
-
-5) `all`      Everything above.
+4) `all`      Everything above.
 
 Read-only: the .DAT files are never modified; all output is stdout (optionally
 redirect to a file).  UTF-8 output is forced so non-ASCII labels survive.
 
 Verified against:
-  out/f1108/sections/sec0.bin  7,421,952 B (header base 0x01021000, size 0x714000)
-  out/f1108/sections/sec1.bin  9,437,184 B (header base 0x01E0F000, size 0x900000)
-Also works with the aefix_1106 artefacts (same offsets for every table used here).
+  out/fw/sections/sec0.bin  7,421,952 B (header base 0x01021000, size 0x714000)
+  out/fw/sections/sec1.bin  9,437,184 B (header base 0x01E0F000, size 0x900000)
 """
 from __future__ import annotations
 
@@ -103,7 +98,7 @@ FFLZ_PAYLOAD = 0x274            # logical image == file offset for decoded.bin
 
 
 def cmd_verify(root: str) -> None:
-    dec = load(os.path.join(root, "out", "f1108", "decoded.bin"))
+    dec = load(os.path.join(root, "out", "fw", "decoded.bin"))
     unpacked, packed, pages, page_size, tag = struct.unpack_from("<5I", dec, FFLZ_HEADER)
     stream = FFLZ_HEADER + 20
     end = stream + packed
@@ -118,30 +113,19 @@ def cmd_verify(root: str) -> None:
         inside = stream <= a and b <= end
         print("  region 0x%X-0x%X inside packed stream? %s" % (a, b, "YES" if inside else "NO"))
 
-    # --- show the token grammar around the observed "ILM_PROVIA" byte run ---
-    target = dec.find(b"ILM_PROVIA", 0x400000, 0x600000)
-    print("\n=== test case: decoded offset 0x%X contains b'ILM_PROVIA' ===" % target)
-    ctx = dec[target - 24:target + 24]
-    print("  bytes:", " ".join("%02X" % c for c in ctx))
-    # walk the token stream backwards is hard; walk forward from a known byte-boundary
-    # we start a little before the literal run: find a <0x80 length byte right before
-    pos = target - 1
-    while pos > target - 8 and dec[pos] >= 0x80:
-        pos -= 1
-    tok = dec[pos]
-    print("  literal-run length byte before it: 0x%02X (=%d) at decoded 0x%X"
-          % (tok, tok, pos))
-    print("  -> the following %d bytes are a plain FFLZ literal run: %r"
-          % (tok, dec[pos + 1:pos + 1 + tok][:32]))
-    print("  => 'FILM_PROVIA' / 'FS_PROVIA' etc. seen raw in decoded.bin are just LZ")
-    print("     literal fragments; they are NOT a tokenized SETP resource.")
+    # --- how to read the packed stream: <0x80 = literal run length, >=0x80 = backref ---
+    print("\n=== token grammar (observed inside the packed stream) ===")
+    print("  < 0x80 : literal run, the byte value is the run length")
+    print("  >=0x80 : 2-byte LZ77 back-reference token")
+    print("           length = (b & 0x0F), distance = ((tok & 0x7F) << 4) | (b >> 4)")
+    print("  => ASCII fragments visible in decoded.bin are plain literal runs;")
+    print("     they are NOT a separate tokenized resource.")
 
     # --- decode the matching decompressed section and show the identifiers there ---
-    sec0 = load(os.path.join(root, "out", "f1108", "sections", "sec0.bin"))
-    for name in (b"UI_FILM_SIM_STD\x00", b"UI_SETP_FILM_SIM\x00",
-                 b"DOT_INFO_FILM_PROVIA\x00"):
-        print("\n  sec0.bin (0x%X B) contains %-28s -> offsets %s"
-              % (len(sec0), name[:-1].decode(), [hex(x) for x in find_all(sec0, name)[:4]]))
+    sec0 = load(os.path.join(root, "out", "fw", "sections", "sec0.bin"))
+    for name in (b"UI_SETP_", b"UI_MENUCOM_ITEM_", b"UI_MENU_KIND_"):
+        print("\n  sec0.bin (0x%X B) contains prefix %-20s -> offsets %s"
+              % (len(sec0), name.decode(), [hex(x) for x in find_all(sec0, name)[:4]]))
     print("\n  sec1.bin contains the same name family (see `pools` / `registry`).")
 
 
@@ -171,7 +155,7 @@ def parse_ascii_pool(data: bytes, start: int, end: int):
 
 def cmd_pools(root: str) -> None:
     for label, (a, b) in POOLS.items():
-        data = load(os.path.join(root, "out", "f1108", "sections", label + ".bin"))
+        data = load(os.path.join(root, "out", "fw", "sections", label + ".bin"))
         hdr = section_header(data)
         names = parse_ascii_pool(data, a, b)
         print("\n=== %s  %d B  header base=0x%08X size=0x%X (match=%s) ==="
@@ -179,9 +163,10 @@ def cmd_pools(root: str) -> None:
         print("    ASCII id pool 0x%X..0x%X  (%d B, %d names)" % (a, b, b - a, len(names)))
         print("    first:", [n for _, n in names[:4]])
         print("    last :", [n for _, n in names[-3:]])
-        for key in (b"UI_FILM_SIM_STD\x00", b"UI_RAW_DEV_FILM_SIM_STD\x00"):
-            print("    %-26s %s" % (key[:-1].decode(),
-                                    [hex(x) for x in find_all(data, key)]))
+        for key in (b"UI_SETP_", b"UI_MENUCOM_ITEM_"):
+            hits = find_all(data, key)
+            print("    %-26s %d hits, first: %s"
+                  % (key.decode(), len(hits), [hex(x) for x in hits[:4]]))
 
 
 # --------------------------------------------------- 3) sec1 name registry ----
@@ -230,7 +215,7 @@ def parse_registry(data: bytes):
 
 
 def cmd_registry(root: str) -> None:
-    data = load(os.path.join(root, "out", "f1108", "sections", "sec1.bin"))
+    data = load(os.path.join(root, "out", "fw", "sections", "sec1.bin"))
     entries, groups, hdr = parse_registry(data)
     print("=== sec1 registry (name_ptr_VA, index) ===")
     print("  load base = 0x%08X (header), size 0x%X" % (hdr["base"], hdr["size"]))
@@ -241,147 +226,6 @@ def cmd_registry(root: str) -> None:
     for g in big:
         print("    @0x%X..0x%X n=%d index %d..%d  %s .. %s"
               % (g[0][0], g[-1][0], len(g), g[0][2], g[-1][2], g[0][3], g[-1][3]))
-    print("\n  film-simulation related groups:")
-    for g in groups:
-        if any("FILM_SIM" in e[3] or "FSIM" in e[3] for e in g):
-            print("    @0x%X n=%d: %s ... %s"
-                  % (g[0][0], len(g), g[0][3], g[-1][3]))
-
-
-# ----------------------------------------------------- 4) film-sim enums -----
-
-FILM_TABLE = ("UI_FILM_SIM_STD", 0x6D35F8)        # first record, sec1 file offset
-RAWDEV_TABLE = ("UI_RAW_DEV_FILM_SIM_STD", 0x6D6430)
-
-
-def _group_at(data: bytes, groups, first_name: str):
-    for g in groups:
-        if g and g[0][3] == first_name:
-            return g
-    return []
-
-
-def cmd_filmsim(root: str) -> None:
-    data = load(os.path.join(root, "out", "f1108", "sections", "sec1.bin"))
-    entries, groups, hdr = parse_registry(data)
-
-    print("=== UI_FILM_SIM_* enum-name table (shooting / still UI) ===")
-    print("    sec1 file offset 0x6D35F8..0x6D36A8, 23 records x 8 B, index = enum value")
-    g = _group_at(data, groups, FILM_TABLE[0])
-    labels = fdl_label_map(root)
-    for k, off, idx, name in g:
-        print("    enum %2d  (0x%02X)  @sec1 0x%06X  %-28s  label=%s"
-              % (idx, idx, off, name, labels.get(name, "?")))
-
-    print("\n=== UI_RAW_DEV_FILM_SIM_* enum-name table (RAW development UI) ===")
-    print("    sec1 file offset 0x6D6430..0x6D64B8, 18 records x 8 B, index = enum value")
-    g2 = _group_at(data, groups, RAWDEV_TABLE[0])
-    for k, off, idx, name in g2:
-        print("    enum %2d  (0x%02X)  @sec1 0x%06X  %s" % (idx, idx, off, name))
-
-    print("\n=== SETP item IDs (sec1 registry, main UI_SETP group @0x6C9BD8, idx 1..2122) ===")
-    for k, off, idx, name in entries:
-        if name in ("UI_SETP_FILM_SIM", "UI_SETP_FILM_SIM_SET",
-                    "UI_SETP_FILM_SIM_SELECT", "UI_SETP_FILM_SIM_SELECT_1",
-                    "UI_SETP_FILM_SIM_2_SELECT_1", "UI_SETP_RAW_DEV_FSIM",
-                    "UI_SETP_FUNCLOCK_FILM_SIM"):
-            print("    id=%-5d @sec1 0x%06X  %s" % (idx, off, name))
-
-    print("\nNOTE: this table is an *enum name table* (index = enum value).  Its order is")
-    print("      the source/enum order, NOT the camera menu order: index 0..4 are")
-    print("      STD,F1B,F1C,F2,BW and MONOCHROME/SEPIA sit in the middle, while the")
-    print("      real menu puts CLASSIC CHROME 4th and MONOCHROME/SEPIA near the end.")
-
-
-# ------------------------------------ 5) FDL (UTF-16) display-label mapping ---
-
-FDL_FIRST = (0x1DA0274, 0x2720274)     # first "FDL Font" package in decoded image
-
-
-def _u16_strings(data: bytes, a: int, b: int):
-    out, i = [], a
-    while i + 1 < b:
-        j, chars, ok = i, [], True
-        while j + 1 < b:
-            v = data[j] | (data[j + 1] << 8)
-            if v == 0:
-                break
-            if v == 0xFFFF or v < 0x20:
-                ok = False
-                break
-            chars.append(v)
-            j += 2
-        if ok and chars:
-            out.append((i, "".join(chr(c) for c in chars)))
-            i = j + 2
-            while i + 1 < b and data[i] == 0 and data[i + 1] == 0:
-                i += 2
-        else:
-            i += 2
-    return out
-
-
-def fdl_label_map(root: str):
-    """Map enum-name -> display label, using the composite-label block of the English
-    text pool (decoded 0x1EC8630..0x1EC8810, records are icon-PUA + TEXT or
-    icon-PUA+"logotype-PUA"+"/TYPE").  Mapping is by best-effort name matching; see
-    notes/09-setp-resource.md for the evidence and the unresolved cases."""
-    dec = load(os.path.join(root, "out", "f1108", "decoded.bin"))
-    ss = _u16_strings(dec, FDL_FIRST[0], FDL_FIRST[1])
-    # collect the label block
-    block = {off: s for off, s in ss if 0x1EC8600 <= off <= 0x1EC8820}
-    text = "\n".join(block.values())
-
-    def exact(s):
-        """exact record match inside the label block (strip leading PUA icons)"""
-        for off in sorted(block):
-            v = block[off]
-            stripped = "".join(ch for ch in v if not (0xE000 <= ord(ch) <= 0xF8FF))
-            if stripped == s or v == s:
-                return v
-        return "?"
-
-    def first(*needles):
-        for off in sorted(block):
-            v = block[off]
-            for n in needles:
-                if n in v:
-                    return v
-        return "?"
-
-    m = {}
-    m["UI_FILM_SIM_STD"] = "\\uf06a\\uf06f/STANDARD  (=PROVIA/STANDARD)"
-    m["UI_FILM_SIM_F1B"] = "\\uf06b\\uf070/VIVID     (=Velvia/VIVID)"
-    m["UI_FILM_SIM_F1C"] = "\\uf06c\\uf071/SOFT      (=ASTIA/SOFT)"
-    m["UI_FILM_SIM_BW"] = exact("MONOCHROME")
-    m["UI_FILM_SIM_SEPIA"] = exact("SEPIA")
-    m["UI_FILM_SIM_CLASSIC_CHROME"] = exact("CLASSIC CHROME")
-    m["UI_FILM_SIM_PRONEGA_H"] = exact("PRO Neg. Hi")
-    m["UI_FILM_SIM_PRONEGA_S"] = exact("PRO Neg. Std")
-    m["UI_FILM_SIM_ETERNA"] = "\\uf370\\uf369/CINEMA (=ETERNA/CINEMA)"
-    m["UI_FILM_SIM_BLEACH_BYPASS"] = exact("ETERNA BLEACH BYPASS")
-    m["UI_FILM_SIM_ACROS_FILTER"] = "ACROS (only found in one later language pool)"
-    m["UI_FILM_SIM_BW_FILTER_G"] = exact("MONOCHROME+G FILTER")
-    m["UI_FILM_SIM_BW_FILTER_R"] = exact("MONOCHROME+R FILTER")
-    m["UI_FILM_SIM_BW_FILTER_Y"] = exact("MONOCHROME+Ye FILTER")
-    return m
-
-
-def cmd_labels(root: str) -> None:
-    dec = load(os.path.join(root, "out", "f1108", "decoded.bin"))
-    print("=== FDL Font packages (magic) in decoded image ===")
-    for off in find_all(dec, b"FDL Font"):
-        print("  0x%08X" % off)
-    print("\n=== display-label block of the English pool (decoded 0x1EC8600..0x1EC8820) ===")
-    ss = _u16_strings(dec, FDL_FIRST[0], FDL_FIRST[1])
-    for off, s in ss:
-        if 0x1EC8600 <= off <= 0x1EC8820:
-            print("  0x%08X  %r" % (off, s))
-    print("\nNOTE: NOSTALGIC Neg. / REALA ACE are NOT in this block; they live in small")
-    print("      separate pools appended after each language block, e.g.")
-    for off in (0x1E9E38A, 0x1E9E3AC):
-        e = dec.find(b"\x00\x00", off)
-        print("      0x%08X  %r" % (off, dec[off:e].decode("utf-16-le", "replace")))
 
 
 # -------------------------------------------------------------------- main ---
@@ -392,7 +236,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="SETP/UI resource decoder (read-only)")
     ap.add_argument("--root", default=DEFAULT_ROOT, help="workspace root")
     ap.add_argument("cmd", nargs="?", default="all",
-                    choices=["verify", "pools", "registry", "filmsim", "labels", "all"])
+                    choices=["verify", "pools", "registry", "all"])
     a = ap.parse_args(argv)
     if a.cmd in ("verify", "all"):
         cmd_verify(a.root)
@@ -400,10 +244,6 @@ def main(argv=None):
         cmd_pools(a.root)
     if a.cmd in ("registry", "all"):
         cmd_registry(a.root)
-    if a.cmd in ("filmsim", "all"):
-        cmd_filmsim(a.root)
-    if a.cmd in ("labels", "all"):
-        cmd_labels(a.root)
     return 0
 
 

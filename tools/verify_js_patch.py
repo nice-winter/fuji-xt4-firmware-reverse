@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Independently verify the .DAT produced by the JS tool (out/patched_1108_js.DAT)."""
+"""Independently verify the .DAT produced by the JS tool (out/patched_js.DAT)."""
 import io, struct
 import os
 
 
 ROOT = os.environ.get("XT4_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORIG = os.path.join(ROOT, "FWUP0024_affix_1108.DAT")
-PATCH = os.path.join(ROOT, "out", "patched_1108_js.DAT")
+ORIG = os.path.join(ROOT, "FWUP0024.DAT")
+PATCH = os.path.join(ROOT, "out", "patched_js.DAT")
 HDR = 0x274
 
 a = open(ORIG, "rb").read()

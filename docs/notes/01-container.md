@@ -1,7 +1,7 @@
-# 01 — 顶层容器 / 头部结构解析（FWUP0024_aefix_1106.DAT）
+# 01 — 顶层容器 / 头部结构解析（FWUP0024.DAT）
 
 > 目标文件（**只读，从未修改**）：
-> `C:\Users\90732\Desktop\dev\xt4\FWUP0024_aefix_1106.DAT`
+> `C:\Users\90732\Desktop\dev\xt4\FWUP0024.DAT`
 > size = 51,278,280 = `0x30E71C8`；MD5 = `73293B4F50269AD07FCD3AEF79B20D16`
 > 解析脚本：`tools/hdr.py`（只读、可重复运行）
 > 关联产物：`out/decoded.bin`、`out/decoded_from274.bin`（Lead 生成）
@@ -258,7 +258,7 @@ cksum(bytes) = (0xFFFFFFFF - (Σ bytes mod 2^32)) & 0xFFFFFFFF     # 8-bit one's
 
 解读候选（按证据强度）：
 1. `[强]` **Thumb 指针/修正表（fixup/jump table）**：`addr` 是 0x00AFxxxx 段内的 Thumb 例程地址；`flag`（-2/-1）是类型/长度标记。
-2. `[推测]` **补丁/覆写记录表**：flag=-2/-1 表示覆写长度或方向；文件名中的 `aefix` 也可能暗示这是「AE fix」补丁相关表。
+2. `[推测]` **补丁/覆写记录表**：flag=-2/-1 表示覆写长度或方向；文件名中的 `早期二改` 也可能暗示这是「AE fix」补丁相关表。
 3. `[推测]` 若 header 实际到 0x378（§8），则它是扩展头的「尾部指针数组」，由相机/updater 在加载后修正这些地址。
 
 未解：`0x00AFxxxx` 是「文件内偏移」还是「运行时内存地址」；flag 两个取值的具体含义；24 条 vs 26 条的分组。

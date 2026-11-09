@@ -1,44 +1,28 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """fdl_bundle.py -- read-only parser for the Fujifilm "FDL Font" resource bundle.
 
-Target: FWUP0024_affix_1108.DAT (X-T4, os=6, v2.12-derived) logical image
-        out/f1108/decoded.bin   (official reference: out/fofficial/decoded.bin)
+Target: FWUP0024.DAT (X-T4, os=6, v2.12-derived) logical image
+        out/fw/decoded.bin
 
-What this tool knows (all verified from the two logical images):
+What this tool knows (verified from the logical image):
 
   * The file contains several "FDL Font\\0" bundles.  Bundle #0 starts at
     decoded 0x1DA0274 and is 0x980000 bytes long (next magic at 0x2720274).
   * Bundle #0 header:  16-byte magic, 12 zero bytes, 28 bytes of small
     descriptor records, then a named "info" record at +0x40:
-        "info" + u32 payload_offset + u32 payload_size   (payload at +0xA31C2,
-        size 0x7C in the affixed build; +0xA2FE5 in the official build).
-  * Bundle #0 body: 0xFDD8C bytes of shared font/glyph/label data, followed by
-    35 language blocks of 0x40000 bytes each, on the decoded grid
+        "info" + u32 payload_offset + u32 payload_size.
+  * Bundle #0 body: shared font/glyph/label data, followed by 35 language
+    blocks of 0x40000 bytes each, on the decoded grid
         0x1E9E000 + k*0x40000   (k = 0..34, last one truncated at 0x2720274).
   * Inside the language blocks three record kinds occur (all little-endian):
         str        : NUL-terminated UTF-16LE text.  Text may begin with a PUA
-                     code point (U+F000..U+F8FF) that acts as an embedded icon /
-                     substring reference.  '\\uf3ee' -> NOSTALGIC icon,
-                     '\\uf445' -> REALA icon in the affixed build.
-        12B entry  : {u32 ref, u16 w, u16 h, u32 flags}   (w=h=100 typical;
-                     flags observed 0 and 2, 2 only in RTL locales)
-        8B message : {u32 text_offset, u16 style, u16 count}  (style 0x0190,
-                     0x0208, 0x0244, 0x021C, 0x0154, 0x0168 seen; count 1..3)
-                     text_offset is a 24-bit-ish offset; in the official build
-                     B+off decodes to real localized strings for many records,
-                     so the offset is *pool relative*, not language-local.
-  * The mod ("二改") wrote, in *every* language block, a new block of data at
-    +0x274..+0x4xx (official bytes there are 0xFF):
-        - localized NOSTALGIC Neg. description (3 lines)
-        - 3 x 12B entries
-        - localized REALA ACE description (3 lines)
-        - 3 x 12B entries
-        - 4 x (label string, 12B entry) pairs; labels are
-              "\uf445", "\uf3ee", "\uf445REALA ACE", "\uf3eeNOSTALGIC Neg."
-    plus, at +0x2174 / +0x21B4, the shared texts "NOSTALGIC Neg." / "REALA ACE".
+                     code point that acts as an embedded icon reference.
+        12B entry  : {u32 ref, u16 w, u16 h, u32 flags}   (w=h=100 typical)
+        8B message : {u32 text_offset, u16 style, u16 count}  (count 1..3)
+                     text_offset is a 24-bit-ish pool-relative offset.
+  * Icon glyph extraction lives in `fdl_glyphs.py`; this tool only walks the
+    bundle/block/message structure and the UTF-16 label pools.
 
-This tool never writes to the .DAT; output goes to out/fdl_bundle_report.txt.
+This tool never writes to the .DAT; report output goes to out/fdl_bundle_report.txt.
 
 Usage:
     python tools/fdl_bundle.py report
@@ -46,8 +30,6 @@ Usage:
     python tools/fdl_bundle.py blocks
     python tools/fdl_bundle.py labels  --block 0
     python tools/fdl_bundle.py entries --block 0
-    python tools/fdl_bundle.py film
-    python tools/fdl_bundle.py patchmap --block 0
 """
 import argparse
 import io
@@ -56,8 +38,8 @@ import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-AFFIX = os.path.join(ROOT, "out", "f1108", "decoded.bin")
-OFFICIAL = os.path.join(ROOT, "out", "fofficial", "decoded.bin")
+CUR_BUILD = os.path.join(ROOT, "out", "fw", "decoded.bin")
+OFFICIAL = os.path.join(ROOT, "out", "official", "decoded.bin")
 REPORT = os.path.join(ROOT, "out", "fdl_bundle_report.txt")
 
 MAGIC = b"FDL Font\x00"
@@ -73,7 +55,7 @@ MSG_STYLES = {0x0050, 0x012C, 0x0154, 0x0168, 0x0190, 0x01B8,
               0x0208, 0x021C, 0x0244}
 
 
-def load(path=AFFIX):
+def load(path=CUR_BUILD):
     with open(path, "rb") as f:
         return f.read()
 
@@ -210,27 +192,6 @@ def tokenize(buf, lo, hi, want=("rec12", "msg8", "str")):
     return toks
 
 
-def find_diff_runs(a, o, lo, hi, gap=1):
-    runs = []
-    p = lo
-    while p < hi:
-        if a[p] != o[p]:
-            s = p
-            while p < hi and a[p] != o[p]:
-                p += 1
-            runs.append((s, p))
-        else:
-            p += 1
-    merged = []
-    for s, e in runs:
-        if merged and s - merged[-1][1] <= gap:
-            merged[-1] = (merged[-1][0], e)
-        else:
-            merged.append((s, e))
-    return merged
-
-
-# ----------------------------------------------------------------------------
 # domain helpers
 # ----------------------------------------------------------------------------
 def pua_label_strings(buf, lo, hi):
@@ -247,20 +208,6 @@ def pua_label_strings(buf, lo, hi):
     return out
 
 
-def film_filter_labels(buf, base, blen):
-    """Composite B&W / ACROS filter labels inside one language block."""
-    return [(p, s) for p, s in pua_label_strings(buf, base, base + blen)
-            if ("FILTER" in s or "MONOCHROME" in s or "ACROS" in s)]
-
-
-def mod_area(buf, base):
-    """Tokenize the mod-inserted +0x274..+0x4A0 group of one language block."""
-    lo = base + 0x274
-    hi = min(base + 0x4A0, len(buf))
-    return tokenize(buf, lo, hi)
-
-
-# ----------------------------------------------------------------------------
 # commands
 # ----------------------------------------------------------------------------
 def cmd_header(buf, w):
@@ -319,49 +266,6 @@ def cmd_entries(buf, w, block):
                 w("  0x%08X STR   %r" % (t["off"], t["v"][:90]))
 
 
-def cmd_film(buf, w):
-    """Report the film-simulation related FDL structures in every block."""
-    w("=== per-block film-simulation label pool (B&W / ACROS filter labels) ===")
-    for k, base, blen in block_bases(buf):
-        labs = film_filter_labels(buf, base, blen)
-        if not labs:
-            continue
-        w("blk%-2d 0x%08X  (%d labels)" % (k, base, len(labs)))
-        for p, s in labs[:14]:
-            w("     0x%08X  %r" % (p, s))
-    w("")
-    w("=== per-block mod new area (+0x274..+0x4A0) ===")
-    for k, base, blen in block_bases(buf):
-        if blen < 0x4A0:
-            continue
-        w("blk%-2d base=0x%08X" % (k, base))
-        for t in mod_area(buf, base):
-            if t["kind"] == "rec12":
-                w("   +0x%05X REC12 ref=0x%06X w=%d h=%d flags=%d"
-                  % (t["off"] - base, *t["v"]))
-            elif t["kind"] == "str":
-                w("   +0x%05X STR   %r" % (t["off"] - base, t["v"][:90]))
-    w("")
-    w("=== +0x2174 (NOSTALGIC) / +0x21B4 (REALA) texts ===")
-    for k, base, blen in block_bases(buf):
-        if blen < 0x21C8:
-            continue
-        n = read_ustr(buf, base + 0x2174, 40)
-        r = read_ustr(buf, base + 0x21B4, 40)
-        w("blk%-2d 0x%08X  +0x2174=%r  +0x21B4=%r" % (k, base, n, r))
-
-
-def cmd_patchmap(buf, w, block):
-    o = load(OFFICIAL)
-    k, base, blen = block_bases(buf)[block]
-    runs = find_diff_runs(buf, o, base, base + blen)
-    w("official vs affix diff, block %d (0x%08X, len=0x%X): %d runs"
-      % (k, base, blen, len(runs)))
-    for s, e in runs:
-        w("  +0x%05X..+0x%05X len=%-4d aff=%r" %
-          (s - base, e - base, e - s, read_ustr(buf, s, 24)))
-
-
 def cmd_report(buf):
     with io.open(REPORT, "w", encoding="utf-8") as f:
         def w(s=""):
@@ -369,12 +273,6 @@ def cmd_report(buf):
         cmd_header(buf, w)
         w()
         cmd_blocks(buf, w)
-        w()
-        cmd_film(buf, w)
-        w()
-        cmd_patchmap(buf, w, 0)
-        w()
-        cmd_patchmap(buf, w, 1)
         w()
         cmd_labels(buf, w, 0)
         w()
@@ -385,13 +283,12 @@ def cmd_report(buf):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["report", "header", "blocks", "labels",
-                                    "entries", "film", "patchmap"])
+    ap.add_argument("cmd", choices=["report", "header", "blocks", "labels", "entries"])
     ap.add_argument("--block", type=int, default=0)
     ap.add_argument("--official", action="store_true",
-                    help="read out/fofficial/decoded.bin instead of the affixed build")
+                    help="read out/official/decoded.bin instead of the modified build")
     ns = ap.parse_args(argv)
-    buf = load(OFFICIAL if ns.official else AFFIX)
+    buf = load(OFFICIAL if ns.official else CUR_BUILD)
     if ns.cmd == "report":
         cmd_report(buf)
         return
@@ -404,10 +301,6 @@ def main(argv=None):
         cmd_labels(buf, w, ns.block)
     elif ns.cmd == "entries":
         cmd_entries(buf, w, ns.block)
-    elif ns.cmd == "film":
-        cmd_film(buf, w)
-    elif ns.cmd == "patchmap":
-        cmd_patchmap(buf, w, ns.block)
 
 
 if __name__ == "__main__":

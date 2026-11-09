@@ -172,7 +172,7 @@
     <div class="warnbox" style="margin-top:14px">
       <b>使用前必读</b>：① 文本受「槽位」限制（只能等长或更短，或利用记录后面的 0x00 填充），超长会被拦下；
       ② 只能用文本池里已经出现过的字符，否则相机可能显示为空白/方框；
-      ③ 这是<b>二改固件</b>（affix），刷机前请保留原始文件与官方固件以便回退；
+      ③ 这是<b>二改固件</b>，刷机前请保留原始文件与官方固件以便回退；
       ④ 修改只影响界面文本，不改动代码与压缩段。
     </div>
   </section>
@@ -189,7 +189,7 @@
  * ------------------------------------------------------------------
  * Pure logic, no DOM.  The page (index.html) only does UI.
  *
- * File model (verified on X-T4 FWUP0024 aefix_1106 / affix_1108):
+ * File model (verified on X-T4 FWUP0024):
  *   bytes 0x000 .. payloadOffset-1   plaintext container header
  *   bytes payloadOffset .. EOF       firmware payload, bit-inverted (XOR 0xFF)
  *   payload[0 .. mainBodyLen)        protected by the checksum field in the header

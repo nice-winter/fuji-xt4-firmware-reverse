@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/* Node test for web/patch-core.js against the real affix_1108 firmware. */
+/* Node test for web/patch-core.js against the real FWUP0024 firmware. */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const core = require(path.join(__dirname, '..', 'web', 'patch-core.js'));
 
-const DAT = path.join(__dirname, '..', 'FWUP0024_affix_1108.DAT');
-const OUT = path.join(__dirname, '..', 'out', 'patched_1108_js.DAT');
+const DAT = path.join(__dirname, '..', 'FWUP0024.DAT');
+const OUT = path.join(__dirname, '..', 'out', 'patched_js.DAT');
 
 function hex(n) { return '0x' + (n >>> 0).toString(16).toUpperCase().padStart(8, '0'); }
 function assert(cond, msg) {
