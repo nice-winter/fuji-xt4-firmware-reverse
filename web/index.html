@@ -81,6 +81,25 @@
       border:1px solid #33405a;margin:0 1px;letter-spacing:-.3px}
   .inprev{margin-top:4px;min-height:0;font-size:13px;color:var(--dim);line-height:1.5}
   .inprev:empty{display:none}
+  /* firmware region map */
+  .regbar { display:flex; height:24px; border:1px solid var(--line); border-radius:6px;
+            overflow:hidden; background:#f8fafc; }
+  .regbar .seg { height:100%; cursor:default; }
+  .regbar .blk { height:100%; border-right:1px solid #fff; }
+  .seg-header{background:#64748b}.seg-section{background:#2563eb}.seg-fdl{background:#7c3aed}
+  .seg-pool{background:#059669}.seg-tail{background:#d97706}.seg-free{background:#e2e8f0}
+  .seg-other{background:#cbd5e1}
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted); }
+  .legend span { display:inline-flex; align-items:center; gap:4px; }
+  .legend i, .ltable i { display:inline-block; width:10px; height:10px; border-radius:2px; }
+  #fdlBar { position:relative; }
+  #fdlBar .poolov { position:absolute; top:0; height:100%; background:rgba(5,150,105,.82);
+                     border-left:1px solid #065f46; border-right:1px solid #065f46; }
+  .ltable { margin-top:12px; font-size:12px; }
+  .ltable .lrow { display:grid; grid-template-columns:12px 170px 200px 90px 1fr;
+                  gap:8px; align-items:center; padding:2px 0; border-bottom:1px dashed #eef2f7; }
+  .ltable .lname { font-weight:600; }
+  .ltable .lnote { color:var(--muted); }
 </style>
 </head>
 <body>
@@ -109,8 +128,21 @@
     <div id="infoNote" class="muted" style="margin-top:10px"></div>
   </section>
 
+  <section id="layoutSection" class="hidden">
+    <h2><span class="n">3</span>固件区块图</h2>
+    <div class="muted" style="margin-bottom:8px">
+      按文件偏移展示容器头、四个 FFLZ 压缩段、FDL Font 资源包、语言文本池与尾部校验区；悬停色块可看区间与大小。
+    </div>
+    <div id="layoutBar" class="regbar"></div>
+    <div id="layoutLegend" class="legend"></div>
+    <h3 style="margin:16px 0 6px;font-size:14px">FDL 字体包 #0 · 语言块与文本池</h3>
+    <div id="fdlBar" class="regbar"></div>
+    <div id="layoutNote" class="muted" style="margin-top:6px"></div>
+    <div id="layoutTable" class="ltable"></div>
+  </section>
+
   <section id="poolSection" class="hidden">
-    <h2><span class="n">3</span>选择要编辑的语言文本池</h2>
+    <h2><span class="n">4</span>选择要编辑的语言文本池</h2>
     <div class="muted" style="margin-bottom:8px">
       工具在固件的 <span class="mono">"FDL Font"</span> 资源包里自动识别出下列文本池（通过字符统计 + 字符串覆盖率判定）。
       默认选中简体中文；也可以改其它语言。
@@ -119,7 +151,7 @@
   </section>
 
   <section id="editorSection" class="hidden">
-    <h2><span class="n">4</span>编辑文本 <span id="poolName" class="tag info" style="vertical-align:middle"></span></h2>
+    <h2><span class="n">5</span>编辑文本 <span id="poolName" class="tag info" style="vertical-align:middle"></span></h2>
     <div class="row" style="margin-bottom:8px">
       <input type="search" id="search" placeholder="搜索原文或新文本…" style="flex:1;min-width:200px">
       <label class="muted"><input type="checkbox" id="onlyEdited"> 只看已修改</label>
@@ -161,7 +193,7 @@
   </section>
 
   <section id="outSection" class="hidden">
-    <h2><span class="n">5</span>生成补丁固件</h2>
+    <h2><span class="n">6</span>生成补丁固件</h2>
     <div class="row">
       <button id="btnApply" class="primary">生成并下载 .DAT</button>
       <button id="btnCheck">只校验，不下载</button>
@@ -237,6 +269,7 @@
           return;
         }
         renderInfo();
+    renderLayout();
         renderPools();
         var best = core.pickBestPool(S.st.pools, 'zh-Hans');
         if (best) selectPool(best);
@@ -249,6 +282,98 @@
   function setEditState(t) { $('drop').innerHTML = '<div class="big">' + t + '</div>'; }
 
   /* ---------------------------------------------------------------- info */
+  function fmtBytes(n) {
+    if (n >= 1048576) return (n / 1048576).toFixed(2) + ' MB';
+    if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+    return n + ' B';
+  }
+
+  function renderLayout() {
+    if (!S.st || !S.st.payload) return;
+    var lay = core.detectLayout({
+      payload: S.st.payload, payloadOffset: S.st.payloadOffset,
+      mainBodyLen: S.st.mainBodyLen, pools: S.st.pools
+    });
+    S.layout = lay;
+    $('layoutSection').classList.remove('hidden');
+
+    var po = lay.payloadOffset;
+    var bar = $('layoutBar');
+    bar.innerHTML = '';
+    lay.items.forEach(function (it) {
+      var seg = document.createElement('div');
+      seg.className = 'seg seg-' + it.kind;
+      seg.style.width = Math.max(0.2, (it.end - it.start) / lay.total * 100) + '%';
+      seg.title = it.label + '\n' + hex(it.start) + ' – ' + hex(it.end - 1) +
+        '\n大小 ' + fmtBytes(it.end - it.start) + (it.note ? '\n' + it.note : '');
+      bar.appendChild(seg);
+    });
+
+    var kinds = [['header', '容器头'], ['section', 'FFLZ 压缩段'], ['fdl', 'FDL Font 包'],
+                 ['pool', '语言文本池'], ['tail', '尾部校验区'], ['free', '空白(0xFF)'], ['other', '其它数据']];
+    var lg = $('layoutLegend');
+    lg.innerHTML = '';
+    kinds.forEach(function (k) {
+      var sp = document.createElement('span');
+      var i = document.createElement('i'); i.className = 'seg-' + k[0];
+      sp.appendChild(i);
+      var lab = document.createElement('span'); lab.textContent = k[1]; sp.appendChild(lab);
+      lg.appendChild(sp);
+    });
+
+    // FDL bundle #0: language blocks + text pools overlay
+    var fbar = $('fdlBar');
+    fbar.innerHTML = '';
+    if (lay.blocks.length) {
+      var b0 = lay.blocks[0].start, b1 = lay.blocks[lay.blocks.length - 1].end;
+      var span = b1 - b0;
+      lay.blocks.forEach(function (blk) {
+        var d = document.createElement('div');
+        d.className = 'blk';
+        d.style.width = ((blk.end - blk.start) / span * 100) + '%';
+        d.style.background = (blk.index % 2) ? '#cbd5e1' : '#94a3b8';
+        d.title = '语言块 ' + blk.index + '\n' + hex(blk.start) + ' – ' + hex(blk.end - 1);
+        fbar.appendChild(d);
+      });
+      lay.pools.forEach(function (p) {
+        var ps = p.start + po, pe = p.end + po;
+        if (pe <= b0 || ps >= b1) return;
+        var ov = document.createElement('div');
+        ov.className = 'poolov';
+        ov.style.left = ((Math.max(ps, b0) - b0) / span * 100) + '%';
+        ov.style.width = ((Math.min(pe, b1) - Math.max(ps, b0)) / span * 100) + '%';
+        ov.title = core.langLabel(p.lang) + '\n' + hex(ps) + ' – ' + hex(pe - 1) +
+          '\n' + p.strings.length + ' 条记录 · ' + fmtBytes(pe - ps);
+        fbar.appendChild(ov);
+      });
+      $('layoutNote').textContent = '语言块：' + lay.blocks.length + ' 个 × 0x40000；' +
+        '绿条 = 自动识别出的文本池（悬停看细节）。';
+    } else {
+      $('layoutNote').textContent = '';
+    }
+
+    var tb = $('layoutTable');
+    tb.innerHTML = '';
+    lay.items.forEach(function (it) {
+      var row = document.createElement('div');
+      row.className = 'lrow';
+      var chip = document.createElement('i');
+      chip.className = 'seg-' + it.kind;
+      row.appendChild(chip);
+      var name = document.createElement('span'); name.className = 'lname'; name.textContent = it.label;
+      row.appendChild(name);
+      var rng = document.createElement('span'); rng.className = 'mono';
+      rng.textContent = hex(it.start) + ' – ' + hex(it.end - 1);
+      row.appendChild(rng);
+      var sz = document.createElement('span'); sz.className = 'mono';
+      sz.textContent = fmtBytes(it.end - it.start);
+      row.appendChild(sz);
+      var nt = document.createElement('span'); nt.className = 'lnote'; nt.textContent = it.note || '';
+      row.appendChild(nt);
+      tb.appendChild(row);
+    });
+  }
+
   function renderInfo() {
     var h = S.st.header, g = $('infoGrid');
     var ckOk = S.st.checksumOk;
