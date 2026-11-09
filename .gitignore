@@ -1,0 +1,57 @@
+# ---------------------------------------------------------------------------
+# 固件二进制：绝不入库（体积 51MB/个，且版权归富士胶片）
+# ---------------------------------------------------------------------------
+*.DAT
+*.dat
+*.bin
+*.BIN
+
+# ---------------------------------------------------------------------------
+# 逆向过程产物 / 大文件输出（可复现，不入库）
+#   out/decoded.bin、out/f1108/、out/glyphs/、各种临时 .DAT/.bin/.txt
+# ---------------------------------------------------------------------------
+out/
+
+# ---------------------------------------------------------------------------
+# 缓存 / 虚拟环境 / 编辑器
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.vscode/
+.idea/
+
+# ---------------------------------------------------------------------------
+# 操作系统垃圾文件
+# ---------------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---------------------------------------------------------------------------
+# tools/ 只收录整理好的分析/补丁工具链；其余一次性探针脚本不入库
+# ---------------------------------------------------------------------------
+tools/*
+!tools/README.md
+!tools/decode_any.py
+!tools/decode_fflz.py
+!tools/fflz_trace.py
+!tools/setp_decode.py
+!tools/fdl_bundle.py
+!tools/fdl_glyphs.py
+!tools/fsim_ui_scan.py
+!tools/patch_no_reala_rightcol.py
+!tools/diff_official.py
+!tools/ui_extract_sc.py
+!tools/ui_sc_inventory.py
+!tools/ui_charset.py
+!tools/ui_pool_ranges.py
+!tools/ui_patch.py
+!tools/build_single_html.py
+!tools/check_page.py
+!tools/hdr.py
+!tools/verify_js_patch.py
+!tools/test_core_node.js
+!tools/test_page_node.js
+!tools/test_both_versions.js

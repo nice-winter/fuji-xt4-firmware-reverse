@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FWUP0024 语言补丁工具 · X-T4 固件</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --dim:#98a0ae; --accent:#4da3ff; --ok:#3ddc97; --warn:#ffb454; --err:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+  a{color:var(--accent)}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#171a21,#12151b);position:sticky;top:0;z-index:10}
+  header h1{margin:0;font-size:18px;font-weight:600;letter-spacing:.3px}
+  header .sub{color:var(--dim);font-size:12.5px;margin-top:4px}
+  main{padding:18px 22px 60px;max-width:1180px;margin:0 auto}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:16px 18px;margin-bottom:16px}
+  section h2{margin:0 0 12px;font-size:15px;font-weight:600;color:#cfd6e2}
+  section h2 .n{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;
+    background:var(--accent);color:#04121f;border-radius:50%;font-size:12px;margin-right:8px;font-weight:700}
+  #drop{border:2px dashed #39414f;border-radius:10px;padding:34px 18px;text-align:center;
+    cursor:pointer;transition:.15s;background:#13161c}
+  #drop:hover,#drop.over{border-color:var(--accent);background:#151b25}
+  #drop .big{font-size:15px;margin-bottom:6px}
+  #drop .hint{color:var(--dim);font-size:12.5px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--line);
+    border-radius:7px;padding:7px 13px;font-size:13.5px;cursor:pointer;transition:.12s}
+  button:hover:not(:disabled){border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  input[type=text],input[type=search],select{background:#12151b;color:var(--text);
+    border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:13.5px;font-family:inherit}
+  input[type=text]:focus,input[type=search]:focus{outline:none;border-color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+  th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px;
+    position:sticky;top:0;background:var(--panel)}
+  tr.sel{background:#1b2836}
+  .mono{font-family:Consolas,"Cascadia Mono",monospace}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  .kv{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .kv .k{color:var(--dim);font-size:11.5px;letter-spacing:.3px}
+  .kv .v{font-size:14px;margin-top:2px}
+  .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11.5px;border:1px solid var(--line)}
+  .tag.ok{color:var(--ok);border-color:#2b6b52;background:#122019}
+  .tag.warn{color:var(--warn);border-color:#6b552b;background:#201a12}
+  .tag.err{color:var(--err);border-color:#6b2b2b;background:#201212}
+  .tag.info{color:var(--accent);border-color:#2b4c6b;background:#121a20}
+  #editorWrap{max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}
+  td.off{white-space:nowrap;color:var(--dim);font-size:12px}
+  td.txt{min-width:180px}
+  td.txt input{width:100%}
+  td.st{white-space:nowrap;font-size:12px}
+  .inp-err{border-color:var(--err)!important;box-shadow:0 0 0 1px #6b2b2b}
+  .muted{color:var(--dim);font-size:12.5px}
+  .err-list{margin:8px 0 0;padding-left:18px;color:var(--err);font-size:13px}
+  #log{white-space:pre-wrap;background:#12151b;border:1px solid var(--line);border-radius:8px;
+    padding:10px;font-family:Consolas,monospace;font-size:12.5px;max-height:260px;overflow:auto;margin-top:10px}
+  .warnbox{background:#201a12;border:1px solid #6b552b;color:#ffce8a;border-radius:8px;
+    padding:10px 12px;font-size:13px;margin-top:10px}
+  .okbox{background:#122019;border:1px solid #2b6b52;color:#9ff0c6;border-radius:8px;
+    padding:10px 12px;font-size:13px;margin-top:10px}
+  footer{color:var(--dim);font-size:12px;text-align:center;padding:0 22px 30px}
+  .hidden{display:none!important}
+  .spacer{flex:1}
+  #pager{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .langLabel{font-weight:600}
+  .radio{accent-color:var(--accent)}
+  /* ---- 固件内嵌图标字形（PUA U+E000..F8FF）的占位/渲染 ---- */
+  .gl{display:inline-block;vertical-align:-2px;border-radius:3px;overflow:hidden;
+      background-repeat:no-repeat;background-size:auto}
+  .gl.ph{width:16px;height:16px;line-height:16px;text-align:center;font-size:8.5px;
+      font-family:Consolas,monospace;color:#9fb4d4;background:#232a36;
+      border:1px solid #33405a;margin:0 1px;letter-spacing:-.3px}
+  .inprev{margin-top:4px;min-height:0;font-size:13px;color:var(--dim);line-height:1.5}
+  .inprev:empty{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>FWUP0024 语言补丁工具 <span class="muted" style="font-weight:400">· Fujifilm X-T4 固件本地化文本编辑</span></h1>
+  <div class="sub">
+    自动解析容器头 / XOR 取反载荷 / 定位各语言文本池 · 原位改写（不改变文件结构）· 自动重算校验和 ·
+    <b>全部在本机浏览器内完成，文件不会被上传</b>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2><span class="n">1</span>选择固件文件</h2>
+    <div id="drop">
+      <div class="big">把 <span class="mono">FWUP0024*.DAT</span> 拖到这里，或点击选择文件</div>
+      <div class="hint">支持 X-T4 的 FWUP0024 系列（os_type = 6，type-6 容器）。文件只读入内存，不会上传。</div>
+      <input type="file" id="file" accept=".DAT,.dat,application/octet-stream" class="hidden">
+    </div>
+    <div id="fileErr" class="warnbox hidden"></div>
+  </section>
+
+  <section id="infoSection" class="hidden">
+    <h2><span class="n">2</span>文件信息</h2>
+    <div class="grid" id="infoGrid"></div>
+    <div id="infoNote" class="muted" style="margin-top:10px"></div>
+  </section>
+
+  <section id="poolSection" class="hidden">
+    <h2><span class="n">3</span>选择要编辑的语言文本池</h2>
+    <div class="muted" style="margin-bottom:8px">
+      工具在固件的 <span class="mono">"FDL Font"</span> 资源包里自动识别出下列文本池（通过字符统计 + 字符串覆盖率判定）。
+      默认选中简体中文；也可以改其它语言。
+    </div>
+    <div id="poolsWrap" style="overflow:auto;max-height:280px;border:1px solid var(--line);border-radius:8px"></div>
+  </section>
+
+  <section id="editorSection" class="hidden">
+    <h2><span class="n">4</span>编辑文本 <span id="poolName" class="tag info" style="vertical-align:middle"></span></h2>
+    <div class="row" style="margin-bottom:8px">
+      <input type="search" id="search" placeholder="搜索原文或新文本…" style="flex:1;min-width:200px">
+      <label class="muted"><input type="checkbox" id="onlyEdited"> 只看已修改</label>
+      <label class="muted"><input type="checkbox" id="onlyCJK"> 只显示含中文</label>
+      <select id="pageSize">
+        <option value="50">每页 50 条</option>
+        <option value="100" selected>每页 100 条</option>
+        <option value="200">每页 200 条</option>
+        <option value="500">每页 500 条</option>
+      </select>
+      <span class="spacer"></span>
+      <button id="btnExportJson">导出修改 JSON</button>
+      <input type="file" id="importJson" accept=".json,application/json" class="hidden">
+      <button id="btnImportJson">导入修改 JSON</button>
+      <button id="btnResetAll">撤销全部修改</button>
+    </div>
+    <div id="editStat" class="muted"></div>
+    <div id="editorWrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:52px">#</th>
+            <th style="width:120px">偏移</th>
+            <th style="width:86px">槽位</th>
+            <th style="width:32%">原文</th>
+            <th>新文本（UTF-16LE，≤ 槽位）</th>
+            <th style="width:96px">状态</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div id="pager">
+      <button id="prevPage">上一页</button>
+      <span id="pageInfo" class="muted"></span>
+      <button id="nextPage">下一页</button>
+    </div>
+    <div id="charHint" class="muted" style="margin-top:8px"></div>
+  </section>
+
+  <section id="outSection" class="hidden">
+    <h2><span class="n">5</span>生成补丁固件</h2>
+    <div class="row">
+      <button id="btnApply" class="primary">生成并下载 .DAT</button>
+      <button id="btnCheck">只校验，不下载</button>
+      <span class="muted" id="applyHint"></span>
+    </div>
+    <div id="applyResult"></div>
+    <div id="log" class="hidden"></div>
+    <div class="warnbox" style="margin-top:14px">
+      <b>使用前必读</b>：① 文本受「槽位」限制（只能等长或更短，或利用记录后面的 0x00 填充），超长会被拦下；
+      ② 只能用文本池里已经出现过的字符，否则相机可能显示为空白/方框；
+      ③ 这是<b>二改固件</b>（affix），刷机前请保留原始文件与官方固件以便回退；
+      ④ 修改只影响界面文本，不改动代码与压缩段。
+    </div>
+  </section>
+</main>
+
+<footer>
+  纯前端单页工具 · 解析规则来自本机对 FWUP0024 的逆向结论（type-6 容器 / XOR 0xFF 载荷 / FDL Font 语言池 / 主校验和 <span class="mono">0xFFFFFFFF−Σbytes</span>）。
+</footer>
+
+<script src="./patch-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  var core = window.FwPatchCore;
+  if (!core) {
+    document.body.insertAdjacentHTML('afterbegin',
+      '<div class="warnbox" style="margin:18px">patch-core.js 没有加载成功：请把 patch-core.js 和本页面放在同一个文件夹里。</div>');
+    return;
+  }
+
+  var S = {
+    fileName: '', buf: null, st: null,
+    pool: null, records: [], charset: null,
+    edits: new Map(),
+    page: 0, pageSize: 100,
+    search: '', onlyEdited: false, onlyCJK: false
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function hex(n) { return '0x' + (n >>> 0).toString(16).toUpperCase().padStart(8, '0'); }
+  function fmtSize(n) { return n.toLocaleString('en-US') + ' B (' + hex(n) + ')'; }
+
+  /* ------------------------------------------------------------ file load */
+  var drop = $('drop'), fileInput = $('file');
+  drop.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  function loadFile(file) {
+    $('fileErr').classList.add('hidden');
+    S.fileName = file.name;
+    setEditState('读取中…');
+    file.arrayBuffer().then(function (ab) {
+      S.buf = new Uint8Array(ab);
+      S.edits.clear();
+      setEditState('分析中…');
+      setTimeout(function () {
+        try {
+          S.st = core.analyze(S.buf);
+        } catch (e) {
+          $('fileErr').classList.remove('hidden');
+          $('fileErr').textContent = '解析失败：' + e.message;
+          return;
+        }
+        renderInfo();
+        renderPools();
+        var best = core.pickBestPool(S.st.pools, 'zh-Hans');
+        if (best) selectPool(best);
+        $('drop').innerHTML = '<div class="big">已加载：<span class="mono"></span></div>' +
+          '<div class="hint">点击这里或拖入新文件可重新选择</div>';
+        $('drop').querySelector('.mono').textContent = S.fileName + ' · ' + S.buf.length.toLocaleString('en-US') + ' B';
+      }, 30);
+    });
+  }
+  function setEditState(t) { $('drop').innerHTML = '<div class="big">' + t + '</div>'; }
+
+  /* ---------------------------------------------------------------- info */
+  function renderInfo() {
+    var h = S.st.header, g = $('infoGrid');
+    var ckOk = S.st.checksumOk;
+    g.innerHTML = '';
+    [
+      ['文件名', S.fileName],
+      ['文件大小', S.buf.length.toLocaleString('en-US') + ' B'],
+      ['容器类型 os_type', String(h.os) + '（model-code ' + h.codeSize + ' B）'],
+      ['固件版本', h.versionText],
+      ['头内校验和', hex(h.checksum)],
+      ['载荷起点', hex(S.st.payloadOffset)],
+      ['主校验区长度', S.st.mainBodyLen ? hex(S.st.mainBodyLen) : '未识别'],
+      ['校验和验证', ckOk ? '通过（公式匹配）' : '⚠ 未匹配（仍可改，但请谨慎）'],
+      ['检测到语言池', S.st.pools.length + ' 个']
+    ].forEach(function (kv) {
+      var d = document.createElement('div');
+      d.className = 'kv';
+      d.innerHTML = '<div class="k"></div><div class="v"></div>';
+      d.querySelector('.k').textContent = kv[0];
+      d.querySelector('.v').textContent = kv[1];
+      if (kv[0] === '校验和验证') {
+        var t = document.createElement('span');
+        t.className = 'tag ' + (ckOk ? 'ok' : 'warn');
+        t.textContent = kv[1];
+        d.querySelector('.v').textContent = '';
+        d.querySelector('.v').appendChild(t);
+      }
+      g.appendChild(d);
+    });
+    $('infoSection').classList.remove('hidden');
+    $('infoNote').textContent = ckOk
+      ? '校验和公式已验证：checksum = 0xFFFFFFFF − Σ(逻辑载荷[0..' + hex(S.st.mainBodyLen) + '])。修改文本后会按同一公式重算。'
+      : '未能用已知公式验证校验和，可能是新版本格式；工具仍会重算 0x20C，但请自行确认。';
+  }
+
+  /* --------------------------------------------------------------- pools */
+  function renderPools() {
+    var wrap = $('poolsWrap');
+    var tb = document.createElement('table');
+    tb.innerHTML = '<thead><tr><th style="width:46px"></th><th>语言</th><th>起点(文件)</th><th>结束(文件)</th>' +
+      '<th>记录数</th><th>含目标字符</th><th>覆盖率</th></tr></thead>';
+    var tbody = document.createElement('tbody');
+    S.st.pools.forEach(function (p) {
+      var tr = document.createElement('tr');
+      if (S.pool === p) tr.className = 'sel';
+      var tdR = document.createElement('td');
+      var r = document.createElement('input');
+      r.type = 'radio'; r.name = 'pool'; r.className = 'radio';
+      r.checked = (S.pool === p);
+      r.addEventListener('change', function () { selectPool(p); });
+      tdR.appendChild(r);
+      tr.appendChild(tdR);
+      var langChars = p.lang === 'zh-Hans' || p.lang === 'zh-Hant' ? '汉字 '
+        : p.lang === 'ja' ? '假名/汉字 ' : p.lang === 'ko' ? '谚文 ' : p.lang === 'ru' ? '西里尔 '
+        : p.lang === 'ar' ? '阿拉伯 ' : p.lang === 'th' ? '泰文 ' : '拉丁 ';
+      var c = p.counts;
+      var nLang = (p.lang === 'zh-Hans' || p.lang === 'zh-Hant') ? c.han
+        : p.lang === 'ja' ? c.kana : p.lang === 'ko' ? c.hangul
+        : p.lang === 'ru' ? c.cyr : p.lang === 'ar' ? c.arab
+        : p.lang === 'th' ? c.thai : c.latin;
+      [[core.langLabel(p.lang) + (p === core.pickBestPool(S.st.pools, 'zh-Hans') ? '  ★推荐' : ''), 'langLabel'], [hex(p.start + S.st.payloadOffset)],
+       [hex(p.end + S.st.payloadOffset)], [String(p.strings.length)],
+       [langChars + nLang], [(p.coverage * 100).toFixed(0) + '%']].forEach(function (cell, i) {
+        var td = document.createElement('td');
+        if (i === 0) td.className = 'langLabel';
+        td.textContent = cell[0];
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    tb.appendChild(tbody);
+    wrap.innerHTML = '';
+    wrap.appendChild(tb);
+    $('poolSection').classList.remove('hidden');
+  }
+
+  function selectPool(p) {
+    S.pool = p;
+    S.records = p.strings;
+    S.charset = core.charsetOf(p.strings);
+    S.edits.clear();
+    S.page = 0;
+    $('poolName').textContent = core.langLabel(p.lang) + ' · ' + p.strings.length + ' 条';
+    $('editorSection').classList.remove('hidden');
+    $('outSection').classList.remove('hidden');
+    renderPools();
+    renderRows();
+    updateStat();
+    $('charHint').textContent = '本池共使用 ' + S.charset.size + ' 个不同字符；新文本请尽量只用这些字，否则相机可能缺少字形。';
+    $('applyHint').textContent = '';
+    $('applyResult').innerHTML = '';
+  }
+
+  /* ------------------------------------------------ PUA glyph rendering */
+  /* 固件文本里的 U+E000..U+F8FF 是“内嵌图标”的字形码位；浏览器没有这些字形，
+     会显示成方块（tofu）。这里把它们渲染成小方块占位（显示码位末两位），
+     等图标字形提取完成后，填入 GLYPHS + SPRITE 即可自动换成真实图标。 */
+  var GLYPHS = {};   // "F2EF" -> {x,y,w,h}
+  var SPRITE = '';   // "data:image/png;base64,..."
+  function isPUA(c) { return c >= 0xE000 && c <= 0xF8FF; }
+  function hasPUA(s) {
+    for (var k = 0; k < s.length; k++) if (isPUA(s.charCodeAt(k))) return true;
+    return false;
+  }
+  function escHTML(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function renderPua(text) {
+    var out = '';
+    for (var k = 0; k < text.length; k++) {
+      var c = text.charCodeAt(k);
+      if (!isPUA(c)) { out += escHTML(text[k]); continue; }
+      var hx = c.toString(16).toUpperCase();
+      var g = GLYPHS[hx];
+      if (g && SPRITE) {
+        out += '<span class="gl" title="固件图标 U+' + hx + '" style="width:' + g.w + 'px;height:' + g.h + 'px;' +
+               'background-image:url(' + SPRITE + ');background-position:-' + g.x + 'px -' + g.y + 'px;"></span>';
+      } else {
+        out += '<span class="gl ph" title="固件图标 U+' + hx + '（字形未提取）">' + hx.slice(-2) + '</span>';
+      }
+    }
+    return out;
+  }
+  /* 字形数据就绪后调用：fillGlyphSprite({sprite:'data:...', glyphs:{...}}) */
+  window.fillGlyphSprite = function (d) {
+    if (d && d.sprite && d.glyphs) { SPRITE = d.sprite; GLYPHS = d.glyphs; renderRows(); }
+  };
+
+  /* ---------------------------------------------------------------- rows */
+  function filtered() {
+    var q = S.search.trim().toLowerCase();
+    var out = [];
+    for (var i = 0; i < S.records.length; i++) {
+      var r = S.records[i];
+      var ed = S.edits.get(r.off);
+      var shown = ed ? ed.text : r.text;
+      if (S.onlyEdited && !ed) continue;
+      if (S.onlyCJK && !/[\u3400-\u9FFF]/.test(r.text)) continue;
+      if (q && r.text.toLowerCase().indexOf(q) < 0 && String(shown).toLowerCase().indexOf(q) < 0) continue;
+      out.push(r);
+    }
+    return out;
+  }
+
+  function maxChars(slot) { return Math.floor((slot - 2) / 2); }
+
+  function validate(text, slot) {
+    if (!text.length) return { ok: false, msg: '不能为空' };
+    var enc = 0;
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      if (!core.allowedUnit(c)) return { ok: false, msg: '不支持的字符 U+' + c.toString(16).toUpperCase() };
+      enc += 2;
+    }
+    if (enc + 2 > slot) return { ok: false, msg: '太长：需要 ' + (enc + 2) + 'B，槽位 ' + slot + 'B（最多 ' + maxChars(slot) + ' 字）' };
+    return { ok: true, msg: '' };
+  }
+
+  function renderRows() {
+    var list = filtered();
+    var total = list.length;
+    var pages = Math.max(1, Math.ceil(total / S.pageSize));
+    if (S.page >= pages) S.page = pages - 1;
+    var start = S.page * S.pageSize;
+    var slice = list.slice(start, start + S.pageSize);
+    var tbody = $('rows');
+    tbody.innerHTML = '';
+    slice.forEach(function (r, i) {
+      var tr = document.createElement('tr');
+      var ed = S.edits.get(r.off);
+      var cur = ed ? ed.text : r.text;
+
+      var tdN = document.createElement('td');
+      tdN.className = 'off';
+      tdN.textContent = (start + i + 1);
+      tr.appendChild(tdN);
+
+      var tdOff = document.createElement('td');
+      tdOff.className = 'off mono';
+      tdOff.textContent = hex(r.off + S.st.payloadOffset);
+      tr.appendChild(tdOff);
+
+      var tdSlot = document.createElement('td');
+      tdSlot.className = 'off mono';
+      tdSlot.textContent = r.slot + 'B/' + maxChars(r.slot) + '字';
+      tr.appendChild(tdSlot);
+
+      var tdOld = document.createElement('td');
+      tdOld.innerHTML = renderPua(r.text);
+      tr.appendChild(tdOld);
+
+      var tdNew = document.createElement('td');
+      tdNew.className = 'txt';
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = cur;
+      inp.spellcheck = false;
+      var prev = document.createElement('div');
+      prev.className = 'inprev';
+      if (hasPUA(cur)) prev.innerHTML = renderPua(cur);
+      var tdSt = document.createElement('td');
+      tdSt.className = 'st';
+
+      function refresh() {
+        var t = inp.value;
+        if (prev) prev.innerHTML = hasPUA(t) ? renderPua(t) : '';
+        if (t === r.text) {
+          S.edits.delete(r.off);
+          inp.classList.remove('inp-err');
+          setTag(tdSt, '', '');
+          tr.classList.remove('sel');
+        } else {
+          var v = validate(t, r.slot);
+          if (v.ok) {
+            S.edits.set(r.off, { text: t, old: r.text });
+            inp.classList.remove('inp-err');
+            setTag(tdSt, '已修改', 'ok');
+            tr.classList.add('sel');
+          } else {
+            S.edits.delete(r.off);           // 非法内容不参与生成，避免误用旧值
+            inp.classList.add('inp-err');
+            setTag(tdSt, '⚠ ' + v.msg, 'err');
+          }
+        }
+        updateStat();
+      }
+      inp.addEventListener('input', refresh);
+      tdNew.appendChild(inp);
+      tdNew.appendChild(prev);
+      tr.appendChild(tdNew);
+      tr.appendChild(tdSt);
+      tbody.appendChild(tr);
+      if (ed) setTag(tdSt, '已修改', 'ok');
+    });
+    $('pageInfo').textContent = '第 ' + (S.page + 1) + ' / ' + pages + ' 页 · 共 ' + total + ' 条 · 已修改 ' + S.edits.size + ' 条';
+    $('prevPage').disabled = S.page <= 0;
+    $('nextPage').disabled = S.page >= pages - 1;
+  }
+
+  function setTag(td, text, cls) {
+    td.innerHTML = '';
+    if (!text) return;
+    var t = document.createElement('span');
+    t.className = 'tag ' + (cls || 'info');
+    t.textContent = text;
+    td.appendChild(t);
+  }
+
+  function updateStat() {
+    $('editStat').textContent = '已修改 ' + S.edits.size + ' 条';
+    var p = $('pageInfo');
+    if (p) {
+      var list = filtered();
+      var pages = Math.max(1, Math.ceil(list.length / S.pageSize));
+      p.textContent = '第 ' + (S.page + 1) + ' / ' + pages + ' 页 · 共 ' + list.length + ' 条 · 已修改 ' + S.edits.size + ' 条';
+    }
+  }
+
+  /* -------------------------------------------------------------- filters */
+  var timer = null;
+  $('search').addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      S.search = $('search').value;
+      S.page = 0;
+      renderRows();
+    }, 160);
+  });
+  $('onlyEdited').addEventListener('change', function () { S.onlyEdited = this.checked; S.page = 0; renderRows(); });
+  $('onlyCJK').addEventListener('change', function () { S.onlyCJK = this.checked; S.page = 0; renderRows(); });
+  $('pageSize').addEventListener('change', function () {
+    S.pageSize = parseInt(this.value, 10) || 100; S.page = 0; renderRows();
+  });
+  $('prevPage').addEventListener('click', function () { if (S.page > 0) { S.page--; renderRows(); } });
+  $('nextPage').addEventListener('click', function () { S.page++; renderRows(); });
+  $('btnResetAll').addEventListener('click', function () {
+    if (!S.edits.size) return;
+    if (!confirm('撤销全部修改？')) return;
+    S.edits.clear(); S.page = 0; renderRows();
+  });
+
+  /* -------------------------------------------------------- import/export */
+  $('btnExportJson').addEventListener('click', function () {
+    var arr = [];
+    S.edits.forEach(function (v, k) {
+      arr.push({ offset: hex(k + S.st.payloadOffset), payload_offset: hex(k), lang: S.pool.lang, old: v.old, new: v.text });
+    });
+    var blob = new Blob([JSON.stringify(arr, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = S.fileName.replace(/\.DAT$/i, '') + '_langpatch.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  });
+  $('btnImportJson').addEventListener('click', function () { $('importJson').click(); });
+  $('importJson').addEventListener('change', function () {
+    var f = this.files[0];
+    if (!f) return;
+    f.text().then(function (txt) {
+      var arr;
+      try { arr = JSON.parse(txt); } catch (e) { alert('JSON 解析失败：' + e.message); return; }
+      var byOff = {};
+      S.records.forEach(function (r) { byOff[r.off] = r; });
+      var bad = 0, ok = 0;
+      arr.forEach(function (it) {
+        var off = it.payload_offset ? parseInt(it.payload_offset, 16)
+          : (it.offset ? parseInt(it.offset, 16) - S.st.payloadOffset : NaN);
+        var r = byOff[off];
+        if (!r) { bad++; return; }
+        var v = validate(it.new, r.slot);
+        if (!v.ok) { bad++; return; }
+        S.edits.set(off, { text: it.new, old: r.text });
+        ok++;
+      });
+      renderRows();
+      alert('导入完成：成功 ' + ok + ' 条' + (bad ? '，忽略 ' + bad + ' 条（偏移不在当前池/超长）' : ''));
+    });
+    this.value = '';
+  });
+
+  /* ---------------------------------------------------------------- apply */
+  function collectEdits() {
+    var rec = {};
+    S.records.forEach(function (r) { rec[r.off] = { slot: r.slot, text: r.text }; });
+    var edits = [];
+    S.edits.forEach(function (v, k) { edits.push({ off: k, text: v.text }); });
+    return { rec: rec, edits: edits };
+  }
+
+  function doApply(download) {
+    var resBox = $('applyResult');
+    resBox.innerHTML = '';
+    var log = $('log');
+    log.classList.remove('hidden');
+    log.textContent = '';
+
+    if (!S.edits.size) {
+      log.textContent = '没有修改内容。请在「编辑文本」里改动至少一条。';
+      return;
+    }
+    var c = collectEdits();
+    var payload = S.st.payload.slice();
+    var results = core.applyEdits(payload, c.edits, c.rec);
+    var bad = results.filter(function (r) { return !r.ok; });
+    var okN = results.length - bad.length;
+    log.textContent += '编辑 ' + results.length + ' 条：成功 ' + okN + ' 条' + (bad.length ? '，失败 ' + bad.length + ' 条' : '') + '\n';
+    bad.forEach(function (b) { log.textContent += '  失败 ' + hex(b.off + S.st.payloadOffset) + '：' + b.msg + '\n'; });
+    if (bad.length) {
+      var d = document.createElement('div');
+      d.className = 'warnbox';
+      d.textContent = '有 ' + bad.length + ' 条修改无法应用，已中止。请修正后再试。';
+      resBox.appendChild(d);
+      return;
+    }
+
+    var state = {
+      payload: payload,
+      payloadOffset: S.st.payloadOffset,
+      mainBodyLen: S.st.mainBodyLen,
+      header: S.st.header,
+      origLength: S.buf.length
+    };
+    var patched = core.buildPatched(S.buf, state);
+    var ver = core.verifyPatched(patched.buf, state, c.edits);
+
+    // byte diff
+    var diff = 0;
+    for (var i = 0; i < S.buf.length; i++) if (S.buf[i] !== patched.buf[i]) diff++;
+
+    log.textContent += '文件大小：' + patched.buf.length + ' B（原 ' + S.buf.length + ' B）' +
+      (patched.buf.length === S.buf.length ? '  ✓ 未改变' : '  ⚠ 改变') + '\n';
+    log.textContent += '校验和：原 ' + hex(S.st.header.checksum) + ' → 新 ' + hex(patched.checksum) + '\n';
+    log.textContent += '校验回读：' + (ver.checksumOk ? '✓ 通过' : '✗ 失败') + '\n';
+    log.textContent += '文本回读：' + (ver.allReadBackOk ? '✓ 全部匹配' : '✗ 有不匹配') + '\n';
+    log.textContent += '实际改动字节：' + diff + ' B\n';
+    ver.readBack.forEach(function (rb) {
+      log.textContent += '  ' + hex(rb.off + S.st.payloadOffset) + '  ' + JSON.stringify(rb.text) + (rb.match ? '  ✓' : '  ✗') + '\n';
+    });
+
+    var box = document.createElement('div');
+    box.className = (ver.checksumOk && ver.allReadBackOk) ? 'okbox' : 'warnbox';
+    box.innerHTML = (ver.checksumOk && ver.allReadBackOk
+      ? '补丁已生成并通过校验：改 ' + okN + ' 条文本，改动 ' + diff + ' 字节，校验和已重算。'
+      : '补丁已生成，但校验/回读有问题，请勿直接刷机。');
+    resBox.appendChild(box);
+
+    if (download) {
+      var name = S.fileName.replace(/\.DAT$/i, '') + '_lang.DAT';
+      if (!/\.DAT$/i.test(name)) name += '.DAT';
+      var blob = new Blob([patched.buf], { type: 'application/octet-stream' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      log.textContent += '已开始下载：' + name + '\n';
+    }
+  }
+  $('btnApply').addEventListener('click', function () { doApply(true); });
+  $('btnCheck').addEventListener('click', function () { doApply(false); });
+})();
+</script>
+</body>
+</html>

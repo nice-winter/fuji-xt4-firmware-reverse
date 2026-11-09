@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FWUP0024 语言补丁工具 · X-T4 固件</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --text:#e6e9ef; --dim:#98a0ae; --accent:#4da3ff; --ok:#3ddc97; --warn:#ffb454; --err:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+  a{color:var(--accent)}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#171a21,#12151b);position:sticky;top:0;z-index:10}
+  header h1{margin:0;font-size:18px;font-weight:600;letter-spacing:.3px}
+  header .sub{color:var(--dim);font-size:12.5px;margin-top:4px}
+  main{padding:18px 22px 60px;max-width:1180px;margin:0 auto}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:16px 18px;margin-bottom:16px}
+  section h2{margin:0 0 12px;font-size:15px;font-weight:600;color:#cfd6e2}
+  section h2 .n{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;
+    background:var(--accent);color:#04121f;border-radius:50%;font-size:12px;margin-right:8px;font-weight:700}
+  #drop{border:2px dashed #39414f;border-radius:10px;padding:34px 18px;text-align:center;
+    cursor:pointer;transition:.15s;background:#13161c}
+  #drop:hover,#drop.over{border-color:var(--accent);background:#151b25}
+  #drop .big{font-size:15px;margin-bottom:6px}
+  #drop .hint{color:var(--dim);font-size:12.5px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--line);
+    border-radius:7px;padding:7px 13px;font-size:13.5px;cursor:pointer;transition:.12s}
+  button:hover:not(:disabled){border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:600}
+  button.primary:hover{filter:brightness(1.08)}
+  input[type=text],input[type=search],select{background:#12151b;color:var(--text);
+    border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:13.5px;font-family:inherit}
+  input[type=text]:focus,input[type=search]:focus{outline:none;border-color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+  th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px;
+    position:sticky;top:0;background:var(--panel)}
+  tr.sel{background:#1b2836}
+  .mono{font-family:Consolas,"Cascadia Mono",monospace}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  .kv{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .kv .k{color:var(--dim);font-size:11.5px;letter-spacing:.3px}
+  .kv .v{font-size:14px;margin-top:2px}
+  .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11.5px;border:1px solid var(--line)}
+  .tag.ok{color:var(--ok);border-color:#2b6b52;background:#122019}
+  .tag.warn{color:var(--warn);border-color:#6b552b;background:#201a12}
+  .tag.err{color:var(--err);border-color:#6b2b2b;background:#201212}
+  .tag.info{color:var(--accent);border-color:#2b4c6b;background:#121a20}
+  #editorWrap{max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}
+  td.off{white-space:nowrap;color:var(--dim);font-size:12px}
+  td.txt{min-width:180px}
+  td.txt input{width:100%}
+  td.st{white-space:nowrap;font-size:12px}
+  .inp-err{border-color:var(--err)!important;box-shadow:0 0 0 1px #6b2b2b}
+  .muted{color:var(--dim);font-size:12.5px}
+  .err-list{margin:8px 0 0;padding-left:18px;color:var(--err);font-size:13px}
+  #log{white-space:pre-wrap;background:#12151b;border:1px solid var(--line);border-radius:8px;
+    padding:10px;font-family:Consolas,monospace;font-size:12.5px;max-height:260px;overflow:auto;margin-top:10px}
+  .warnbox{background:#201a12;border:1px solid #6b552b;color:#ffce8a;border-radius:8px;
+    padding:10px 12px;font-size:13px;margin-top:10px}
+  .okbox{background:#122019;border:1px solid #2b6b52;color:#9ff0c6;border-radius:8px;
+    padding:10px 12px;font-size:13px;margin-top:10px}
+  footer{color:var(--dim);font-size:12px;text-align:center;padding:0 22px 30px}
+  .hidden{display:none!important}
+  .spacer{flex:1}
+  #pager{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .langLabel{font-weight:600}
+  .radio{accent-color:var(--accent)}
+  /* ---- 固件内嵌图标字形（PUA U+E000..F8FF）的占位/渲染 ---- */
+  .gl{display:inline-block;vertical-align:-2px;border-radius:3px;overflow:hidden;
+      background-repeat:no-repeat;background-size:auto}
+  .gl.ph{width:16px;height:16px;line-height:16px;text-align:center;font-size:8.5px;
+      font-family:Consolas,monospace;color:#9fb4d4;background:#232a36;
+      border:1px solid #33405a;margin:0 1px;letter-spacing:-.3px}
+  .inprev{margin-top:4px;min-height:0;font-size:13px;color:var(--dim);line-height:1.5}
+  .inprev:empty{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>FWUP0024 语言补丁工具 <span class="muted" style="font-weight:400">· Fujifilm X-T4 固件本地化文本编辑</span></h1>
+  <div class="sub">
+    自动解析容器头 / XOR 取反载荷 / 定位各语言文本池 · 原位改写（不改变文件结构）· 自动重算校验和 ·
+    <b>全部在本机浏览器内完成，文件不会被上传</b>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2><span class="n">1</span>选择固件文件</h2>
+    <div id="drop">
+      <div class="big">把 <span class="mono">FWUP0024*.DAT</span> 拖到这里，或点击选择文件</div>
+      <div class="hint">支持 X-T4 的 FWUP0024 系列（os_type = 6，type-6 容器）。文件只读入内存，不会上传。</div>
+      <input type="file" id="file" accept=".DAT,.dat,application/octet-stream" class="hidden">
+    </div>
+    <div id="fileErr" class="warnbox hidden"></div>
+  </section>
+
+  <section id="infoSection" class="hidden">
+    <h2><span class="n">2</span>文件信息</h2>
+    <div class="grid" id="infoGrid"></div>
+    <div id="infoNote" class="muted" style="margin-top:10px"></div>
+  </section>
+
+  <section id="poolSection" class="hidden">
+    <h2><span class="n">3</span>选择要编辑的语言文本池</h2>
+    <div class="muted" style="margin-bottom:8px">
+      工具在固件的 <span class="mono">"FDL Font"</span> 资源包里自动识别出下列文本池（通过字符统计 + 字符串覆盖率判定）。
+      默认选中简体中文；也可以改其它语言。
+    </div>
+    <div id="poolsWrap" style="overflow:auto;max-height:280px;border:1px solid var(--line);border-radius:8px"></div>
+  </section>
+
+  <section id="editorSection" class="hidden">
+    <h2><span class="n">4</span>编辑文本 <span id="poolName" class="tag info" style="vertical-align:middle"></span></h2>
+    <div class="row" style="margin-bottom:8px">
+      <input type="search" id="search" placeholder="搜索原文或新文本…" style="flex:1;min-width:200px">
+      <label class="muted"><input type="checkbox" id="onlyEdited"> 只看已修改</label>
+      <label class="muted"><input type="checkbox" id="onlyCJK"> 只显示含中文</label>
+      <select id="pageSize">
+        <option value="50">每页 50 条</option>
+        <option value="100" selected>每页 100 条</option>
+        <option value="200">每页 200 条</option>
+        <option value="500">每页 500 条</option>
+      </select>
+      <span class="spacer"></span>
+      <button id="btnExportJson">导出修改 JSON</button>
+      <input type="file" id="importJson" accept=".json,application/json" class="hidden">
+      <button id="btnImportJson">导入修改 JSON</button>
+      <button id="btnResetAll">撤销全部修改</button>
+    </div>
+    <div id="editStat" class="muted"></div>
+    <div id="editorWrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:52px">#</th>
+            <th style="width:120px">偏移</th>
+            <th style="width:86px">槽位</th>
+            <th style="width:32%">原文</th>
+            <th>新文本（UTF-16LE，≤ 槽位）</th>
+            <th style="width:96px">状态</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div id="pager">
+      <button id="prevPage">上一页</button>
+      <span id="pageInfo" class="muted"></span>
+      <button id="nextPage">下一页</button>
+    </div>
+    <div id="charHint" class="muted" style="margin-top:8px"></div>
+  </section>
+
+  <section id="outSection" class="hidden">
+    <h2><span class="n">5</span>生成补丁固件</h2>
+    <div class="row">
+      <button id="btnApply" class="primary">生成并下载 .DAT</button>
+      <button id="btnCheck">只校验，不下载</button>
+      <span class="muted" id="applyHint"></span>
+    </div>
+    <div id="applyResult"></div>
+    <div id="log" class="hidden"></div>
+    <div class="warnbox" style="margin-top:14px">
+      <b>使用前必读</b>：① 文本受「槽位」限制（只能等长或更短，或利用记录后面的 0x00 填充），超长会被拦下；
+      ② 只能用文本池里已经出现过的字符，否则相机可能显示为空白/方框；
+      ③ 这是<b>二改固件</b>（affix），刷机前请保留原始文件与官方固件以便回退；
+      ④ 修改只影响界面文本，不改动代码与压缩段。
+    </div>
+  </section>
+</main>
+
+<footer>
+  纯前端单页工具 · 解析规则来自本机对 FWUP0024 的逆向结论（type-6 容器 / XOR 0xFF 载荷 / FDL Font 语言池 / 主校验和 <span class="mono">0xFFFFFFFF−Σbytes</span>）。
+</footer>
+
+<script>
+/* ---- patch-core.js (inlined) ---- */
+/*
+ * FWUP0024 language-patch core (browser + Node)
+ * ------------------------------------------------------------------
+ * Pure logic, no DOM.  The page (index.html) only does UI.
+ *
+ * File model (verified on X-T4 FWUP0024 aefix_1106 / affix_1108):
+ *   bytes 0x000 .. payloadOffset-1   plaintext container header
+ *   bytes payloadOffset .. EOF       firmware payload, bit-inverted (XOR 0xFF)
+ *   payload[0 .. mainBodyLen)        protected by the checksum field in the header
+ *                                   checksum = 0xFFFFFFFF - (sum of logical bytes) mod 2^32
+ *   localisation text                "FDL Font" bundles inside the payload;
+ *                                    each language owns a block of NUL-terminated
+ *                                    UTF-16LE strings (2/4-byte aligned records)
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.FwPatchCore = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var CODE_SIZES = { 1: 64, 2: 128, 3: 512, 4: 512, 5: 512, 6: 512, 7: 512, 8: 512 };
+  var FDL_MAGIC = [0x46, 0x44, 0x4C, 0x20, 0x46, 0x6F, 0x6E, 0x74, 0x00]; // "FDL Font\0"
+
+  /* ------------------------------------------------------------------ bytes */
+  function u32(d, o) {
+    return (d[o] | (d[o + 1] << 8) | (d[o + 2] << 16) | (d[o + 3] << 24)) >>> 0;
+  }
+  function w32(d, o, v) {
+    d[o] = v & 0xFF; d[o + 1] = (v >>> 8) & 0xFF;
+    d[o + 2] = (v >>> 16) & 0xFF; d[o + 3] = (v >>> 24) & 0xFF;
+  }
+  function u16(d, o) { return d[o] | (d[o + 1] << 8); }
+
+  /* --------------------------------------------------------- char classes */
+  function allowedUnit(c) {
+    if (c >= 0x20 && c <= 0x7E) return true;              // ASCII printable
+    if (c >= 0x00A0 && c <= 0x00FF) return true;          // Latin-1
+    if (c === 0x00B0 || c === 0x00D7 || c === 0x2103) return true;
+    if (c >= 0x0370 && c <= 0x03FF) return true;          // Greek
+    if (c >= 0x0400 && c <= 0x04FF) return true;          // Cyrillic
+    if (c >= 0x0590 && c <= 0x05FF) return true;          // Hebrew
+    if (c >= 0x0600 && c <= 0x06FF) return true;          // Arabic
+    if (c >= 0x0900 && c <= 0x097F) return true;          // Devanagari
+    if (c >= 0x0E00 && c <= 0x0E7F) return true;          // Thai
+    if (c >= 0x2000 && c <= 0x206F) return true;          // general punctuation
+    if (c >= 0x2460 && c <= 0x24FF) return true;          // circled numbers
+    if (c >= 0x3000 && c <= 0x303F) return true;          // CJK punctuation
+    if (c >= 0x3040 && c <= 0x30FF) return true;          // kana
+    if (c >= 0x3400 && c <= 0x4DBF) return true;          // CJK ext A
+    if (c >= 0x4E00 && c <= 0x9FFF) return true;          // CJK
+    if (c >= 0xAC00 && c <= 0xD7AF) return true;          // Hangul
+    if (c >= 0xD800 && c <= 0xDFFF) return false;         // no surrogates
+    if (c >= 0xE000 && c <= 0xF8FF) return true;          // PUA (inline glyph refs)
+    if (c >= 0xFF00 && c <= 0xFFEF) return true;          // fullwidth forms
+    return false;
+  }
+
+  var SIMP_ONLY = new Set(('设关 闭 择 图 线 电 车 门 马 鸟 鱼 风 飞 东 乐 书 买 卖 开 时 间 问 题 显 数 据 删 确 认 选 单 语 画 质 镜 头 对 闪 灯 连 滤 胶 拟 录 摄 传 输 转 换 后 从 来 个 们 会 动 员 银 钟 钢 铁 长 阳 阴 际 陆 陈 险 队 阶 难 雪 云 雾 静 响 页 顺 须 领 颜 饭 饮 驾 验 骑 鸡 鹅 鹰 黄 齐 齿 龙 龟 边 达 过 还 这 进 连 远 违 软 载 车 轮 转 轻 较 输 辑 辞 农 冲 决 况 冻 净 减 凑 几 凤 凭 凯 击 划 刘 则 刚 创 别 到 剧 办 务 动 劳 势 勋 匀 区 医 华 协 单 卖 卫 厂 历 压 厌 厅 县 参 双 发 变 叠 叶 号 叹 吗 听 启 员 呐 呜 响 哑 唤 啊 唱 喷 吗 嘱 团 园 围 图 圆 圣 场 坏 块 坚 坛 坝 坟 坠 垄 型 垒 垦 垫 场 声 壳 处 备 复 够 头 夹 夺 奋 奖 妆 妇 妈 娱 婴 媳 嫁 嫌 孙 学 宁 宝 实 宠 审 宪 宫 宽 宾 对 寻 导 寿 将 尔 尘 尝 尧 尸 尽 层 届 属 岁 岂 岗 岛 岭 峡 崭 巩 币 帅 师 帐 带 帮 广 庆 库 应 废 开 异 弃 张 弹 强 归 当 录 彻 径 忆 忧 怀 态 怜 总 恋 恳 恶 恼 悦 悬 惊 惧 惨 惭 惯 愿 懒 戏 战 户 扑 执 扩 扫 扬 扰 抚 抛 抢 护 报 担 拟 拢 拣 拥 拨 择 挂 挤 挥 捞 损 换 据 捷 授 掉 掌 排 掘 挂 采 释 钟 钥 钢 钱 铁 铜 银 铺 链 销 锁 锅 锋 错 键 镇 镜 长 门 闪 闭 问 间 闻 阁 阅 队 阳 阴 陆 陈 险 随 隐 难 雏 雾 静 页 顺 须 项 顾 顿 预 领 频 题 颜 额 风 飞 饭 饮 饰 饱 饺 馆 马 驱 驶 驻 驾 骂 验 骑 骄 骗 骤 骨 高 鱼 鲜 鸟 鸡 鸣 鹅 鹰 黄 黑 齐 齿 龙 龟'));
+  var TRAD_ONLY = new Set(('設關閉擇圖線電車門馬鳥魚風飛東樂書買賣開時間問題顯示數據刪確認選單語畫質鏡頭對閃燈連濾膠擬錄攝傳輸轉換後來個們會動員銀鐘鋼鐵長陽陰際陸陳險隊階難雪雲霧靜響頁順須領顏飯飲駕驗騎雞鵝鷹黃齊齒龍龜邊達過還這進遠違軟載輛輪轉輕較輸輯辭農衝決況凍淨減湊幾鳳憑凱擊劃劉則剛創別到劇辦務勞勢勳勻區醫華協單衛廠歷壓厭廳縣參雙發變疊葉號嘆嗎聽啟員吶嗚響啞喚啊唱噴囑團園圍圓聖場壞塊堅壇壩墳墜壟型壘墾墊聲殼處備復夠頭夾奪奮獎妝婦媽娛嬰媳嫁嫌孫學寧寶實寵審憲宮寬賓尋導壽將爾塵嘗堯屍盡層屆屬歲豈崗島嶺峽嶄鞏幣帥師帳帶幫廣慶庫應廢異棄張彈強歸當錄徹徑憶憂懷態憐總戀懇惡惱悅懸驚懼慘慚慣願懶戲戰戶撲執擴掃揚擾撫拋搶護報擔攏揀擁撥揀掛擠揮撈損據捷授掉掌排掘採釋鑰錢銅鋪鏈銷鎖鍋鋒錯鍵鎮鏡閃聞閣閱隨隱雛項顧頓預頻額飾飽餃館驅駛駐罵騙驟鮮鳴'));
+
+  function isCJK(c) { return c >= 0x4E00 && c <= 0x9FFF; }
+  function isKana(c) { return c >= 0x3040 && c <= 0x30FF; }
+  function isHangul(c) { return c >= 0xAC00 && c <= 0xD7AF; }
+  function isCyr(c) { return c >= 0x0400 && c <= 0x04FF; }
+  function isArab(c) { return c >= 0x0600 && c <= 0x06FF; }
+  function isThai(c) { return c >= 0x0E00 && c <= 0x0E7F; }
+  function isLatinLetter(c) { return (c >= 0x41 && c <= 0x5A) || (c >= 0x61 && c <= 0x7A); }
+
+  /* -------------------------------------------------------------- strings */
+  function decodeString(payload, off, end) {
+    var chars = [], p = off, c;
+    while (p + 1 < end) {
+      c = payload[p] | (payload[p + 1] << 8);
+      if (c === 0) {
+        return { text: String.fromCharCode.apply(null, chars), len: (p - off) + 2 };
+      }
+      if (!allowedUnit(c) || chars.length > 500) return null;
+      chars.push(c);
+      p += 2;
+    }
+    return null;
+  }
+
+  /* -------------------------------------------------------------- header */
+  function parseHeader(buf) {
+    if (buf.length < 0x40) throw new Error('文件太小，不是 FWUP 固件');
+    var os = u32(buf, 0);
+    var codeSize = CODE_SIZES[os];
+    if (!codeSize) throw new Error('未知的 os_type = ' + os + '（本工具支持 1..8）');
+    var version1 = u32(buf, 4 + codeSize);
+    var version2 = u32(buf, 4 + codeSize + 4);
+    var checksum = u32(buf, 4 + codeSize + 8);
+    var tail = u32(buf, 4 + codeSize + 12);
+    var headerSize = codeSize + 20;
+    // model code: 512 (or 64/128) bytes of ASCII-hex, may itself be hex text
+    var modelRaw = '';
+    for (var i = 4; i < 4 + codeSize; i++) {
+      var b = buf[i];
+      modelRaw += (b >= 32 && b < 127) ? String.fromCharCode(b) : '.';
+    }
+    var versionText = version1 + '.' + (version2 < 16 ? '0' : '') + version2.toString(16).toUpperCase();
+    return {
+      os: os, codeSize: codeSize, version1: version1, version2: version2,
+      versionText: versionText, checksum: checksum, tail: tail,
+      headerSize: headerSize, checksumOffset: 4 + codeSize + 8,
+      modelRaw: modelRaw
+    };
+  }
+
+  /* ----------------------------------------------------- payload / checksum */
+  function decodePayload(buf, payloadOffset) {
+    var n = buf.length - payloadOffset;
+    var p = new Uint8Array(n);
+    for (var i = 0; i < n; i++) p[i] = buf[payloadOffset + i] ^ 0xFF;
+    return p;
+  }
+
+  function checksumOf(payload, len) {
+    var s = 0;
+    for (var i = 0; i < len; i++) s += payload[i];
+    s = s % 4294967296;
+    return ((0xFFFFFFFF - s) + 4294967296) % 4294967296;
+  }
+
+  function encodeFile(orig, payloadOffset, checksumOffset, payload) {
+    var out = new Uint8Array(orig.length);
+    out.set(orig.subarray(0, payloadOffset), 0);
+    for (var i = 0; i < payload.length; i++) out[payloadOffset + i] = payload[i] ^ 0xFF;
+    return out;
+  }
+
+  /* main-body length = first region offset; find it by matching the checksum */
+  function detectMainBody(payload, checksum, headerU32s) {
+    var STEP = 4096;
+    var n = payload.length;
+    var pref = new Float64Array(Math.floor(n / STEP) + 2);
+    var s = 0;
+    for (var i = 0; i < n; i++) {
+      s += payload[i];
+      if (((i + 1) % STEP) === 0) pref[(i + 1) / STEP] = s;
+    }
+    var cands = {}, list = [];
+    for (var k = 0; k < headerU32s.length; k++) {
+      var v = headerU32s[k];
+      if (v > 0 && v <= n && !cands[v]) { cands[v] = 1; list.push(v); }
+    }
+    list.push(0x2FC0020);             // known fallback for this generation
+    list.sort(function (a, b) { return a - b; });
+    for (var j = 0; j < list.length; j++) {
+      var L = list[j];
+      if (L <= 0 || L > n) continue;
+      var base = Math.floor(L / STEP);
+      var sum = base < pref.length ? pref[base] : 0;
+      for (var q = base * STEP; q < L; q++) sum += payload[q];
+      var ck = ((0xFFFFFFFF - (sum % 4294967296)) + 4294967296) % 4294967296;
+      if (ck === checksum) return { len: L, sum: sum % 4294967296 };
+    }
+    return null;
+  }
+
+  /* ------------------------------------------------------- FDL bundles */
+  function findFdlBundles(payload) {
+    var out = [], n = payload.length;
+    var L = FDL_MAGIC.length;
+    for (var i = 0; i + L <= n; i++) {
+      if (payload[i] !== 0x46) { continue; }
+      var ok = true;
+      for (var j = 1; j < L; j++) { if (payload[i + j] !== FDL_MAGIC[j]) { ok = false; break; } }
+      if (ok) { out.push(i); i += L - 1; }
+    }
+    return out;
+  }
+
+  /* --------------------------------------------------- text-pool detection */
+  function windowCounts(payload, start, end) {
+    var c = { text: 0, han: 0, kana: 0, hangul: 0, cyr: 0, arab: 0, thai: 0, latin: 0, nul: 0, units: 0 };
+    for (var p = start; p + 1 < end; p += 2) {
+      var u = payload[p] | (payload[p + 1] << 8);
+      c.units++;
+      if (u === 0) { c.nul++; continue; }
+      if (!allowedUnit(u)) continue;
+      c.text++;
+      if (isCJK(u)) c.han++;
+      else if (isKana(u)) c.kana++;
+      else if (isHangul(u)) c.hangul++;
+      else if (isCyr(u)) c.cyr++;
+      else if (isArab(u)) c.arab++;
+      else if (isThai(u)) c.thai++;
+      else if (isLatinLetter(u)) c.latin++;
+    }
+    return c;
+  }
+
+  function extractStrings(payload, start, end) {
+    var out = [], off = start;
+    while (off + 1 < end) {
+      var r = decodeString(payload, off, end);
+      if (r && r.text.length) { out.push({ off: off, nbytes: r.len, text: r.text }); off += r.len; }
+      else off += 2;
+    }
+    for (var i = 0; i < out.length; i++) {
+      var next = i + 1 < out.length ? out[i + 1].off : out[i].off + out[i].nbytes;
+      out[i].slot = next - out[i].off;
+    }
+    return out;
+  }
+
+  function clusterByGap(list, maxGap) {
+    if (!list.length) return [];
+    var clusters = [[list[0]]];
+    for (var i = 1; i < list.length; i++) {
+      var prev = clusters[clusters.length - 1];
+      var last = prev[prev.length - 1];
+      if (list[i].off - (last.off + last.nbytes) <= maxGap) prev.push(list[i]);
+      else clusters.push([list[i]]);
+    }
+    return clusters;
+  }
+
+  function langCharTester(lang) {
+    if (lang === 'zh-Hans' || lang === 'zh-Hant') return isCJK;
+    if (lang === 'ja') return function (u) { return isKana(u) || isCJK(u); };
+    if (lang === 'ko') return function (u) { return isHangul(u) || isCJK(u); };
+    if (lang === 'ru') return isCyr;
+    if (lang === 'ar') return isArab;
+    if (lang === 'th') return isThai;
+    return isLatinLetter;
+  }
+
+  function classifyStrings(strings) {
+    var c = { total: 0, han: 0, simp: 0, trad: 0, kana: 0, hangul: 0, cyr: 0, arab: 0, thai: 0, latin: 0, chars: 0 };
+    for (var i = 0; i < strings.length; i++) {
+      var t = strings[i].text;
+      c.total++;
+      for (var j = 0; j < t.length; j++) {
+        var u = t.charCodeAt(j);
+        c.chars++;
+        if (isCJK(u)) { c.han++; if (SIMP_ONLY.has(t[j])) c.simp++; else if (TRAD_ONLY.has(t[j])) c.trad++; }
+        else if (isKana(u)) c.kana++;
+        else if (isHangul(u)) c.hangul++;
+        else if (isCyr(u)) c.cyr++;
+        else if (isArab(u)) c.arab++;
+        else if (isThai(u)) c.thai++;
+        else if (isLatinLetter(u)) c.latin++;
+      }
+    }
+    var lang = 'xx';
+    if (c.hangul > c.chars * 0.10) lang = 'ko';
+    else if (c.kana > c.chars * 0.05) lang = 'ja';
+    else if (c.han > c.chars * 0.10) lang = (c.simp > c.trad) ? 'zh-Hans' : 'zh-Hant';
+    else if (c.cyr > c.chars * 0.30) lang = 'ru';
+    else if (c.arab > c.chars * 0.30) lang = 'ar';
+    else if (c.thai > c.chars * 0.30) lang = 'th';
+    else if (c.latin > c.chars * 0.30) lang = 'en';
+    return { counts: c, lang: lang };
+  }
+
+  function langLabel(lang) {
+    return {
+      'zh-Hans': '简体中文', 'zh-Hant': '繁體中文', 'ja': '日本語', 'ko': '한국어',
+      'ru': 'Русский', 'ar': 'العربية', 'th': 'ไทย', 'en': 'Latin / English', 'xx': '未知'
+    }[lang] || lang;
+  }
+
+  /**
+   * Detect every localisation text pool in the payload.
+   * Strategy: only look inside "FDL Font" bundles -> 4 KiB window language
+   * statistics -> candidate zones -> string extraction -> coverage filter
+   * (real pools >= ~0.9, font bitmap areas <= ~0.5) -> gap clustering.
+   */
+  function detectPools(payload, opts) {
+    opts = opts || {};
+    var minCoverage = opts.minCoverage || 0.70;
+    var minRecords = opts.minRecords || 40;
+    var W = 4096;
+    var bundles = findFdlBundles(payload);
+    if (!bundles.length) bundles = [0];
+    var pools = [];
+    for (var bi = 0; bi < bundles.length; bi++) {
+      var bs = bundles[bi];
+      var be = (bi + 1 < bundles.length) ? bundles[bi + 1] : payload.length;
+      var zones = [], cur = null;
+      for (var off = bs; off + W <= be; off += W) {
+        var c = windowCounts(payload, off, off + W);
+        var strong = (c.han > W / 2 * 0.15) || (c.kana > W / 2 * 0.15) ||
+                     (c.hangul > W / 2 * 0.15) || (c.cyr > W / 2 * 0.15) ||
+                     (c.arab > W / 2 * 0.15) || (c.thai > W / 2 * 0.15) ||
+                     (c.latin > W / 2 * 0.35 && c.text > W / 2 * 0.55);
+        if (strong) {
+          if (cur && off - cur.end <= W) cur.end = off + W;
+          else { cur = { start: off, end: off + W }; zones.push(cur); }
+        }
+      }
+      for (var zi = 0; zi < zones.length; zi++) {
+        var zs = Math.max(0, zones[zi].start - W), ze = Math.min(payload.length, zones[zi].end + W);
+        var all = extractStrings(payload, zs, ze);
+        if (all.length < minRecords) continue;
+        var span = 0;
+        for (var k = 0; k < all.length; k++) span += all[k].nbytes;
+        var coverage = span / (ze - zs);
+        if (coverage < minCoverage) continue;
+        var clusters = clusterByGap(all, 64);
+        clusters.sort(function (a, b) { return b.length - a.length; });
+        var best = clusters[0];
+        var cls = classifyStrings(best);
+        // trim leading/trailing records that carry no character of the pool language
+        // (font bitmap tables next to the pool can decode as short junk strings)
+        var has = langCharTester(cls.lang);
+        var first = -1, last = -1;
+        for (var ri = 0; ri < best.length; ri++) {
+          var ht = false;
+          for (var rj = 0; rj < best[ri].text.length; rj++) {
+            if (has(best[ri].text.charCodeAt(rj))) { ht = true; break; }
+          }
+          if (ht) { if (first < 0) first = ri; last = ri; }
+        }
+        if (first >= 0 && (first > 0 || last < best.length - 1)) {
+          var s0 = best[first].off;
+          var e0 = best[last].off + best[last].nbytes;
+          best = best.filter(function (r) { return r.off >= s0 && r.off < e0; });
+        }
+        var startOff = best[0].off;
+        var lastRec = best[best.length - 1];
+        pools.push({
+          start: startOff, end: lastRec.off + lastRec.nbytes, lang: cls.lang,
+          counts: cls.counts, coverage: coverage, strings: best,
+          bundle: bs
+        });
+      }
+    }
+    // drop pools contained in a bigger one with the same language family
+    pools.sort(function (a, b) { return b.strings.length - a.strings.length; });
+    var out = [];
+    for (var i = 0; i < pools.length; i++) {
+      var p = pools[i], dup = false;
+      for (var j = 0; j < out.length; j++) {
+        var q = out[j];
+        var overlap = Math.min(p.end, q.end) - Math.max(p.start, q.start);
+        if (overlap > 0 && overlap > (p.end - p.start) * 0.5) { dup = true; break; }
+      }
+      if (!dup) out.push(p);
+    }
+    out.sort(function (a, b) { return a.start - b.start; });
+    return out;
+  }
+
+  function pickBestPool(pools, lang) {
+    lang = lang || 'zh-Hans';
+    var best = null;
+    for (var i = 0; i < pools.length; i++) {
+      if (pools[i].lang === lang && (!best || pools[i].strings.length > best.strings.length)) best = pools[i];
+    }
+    return best || pools[0] || null;
+  }
+
+  /* --------------------------------------------------------------- edits */
+  function encodeUtf16LE(text) {
+    var out = new Uint8Array(text.length * 2);
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      out[2 * i] = c & 0xFF;
+      out[2 * i + 1] = (c >>> 8) & 0xFF;
+    }
+    return out;
+  }
+
+  function charsetOf(strings) {
+    var set = new Set();
+    for (var i = 0; i < strings.length; i++) {
+      var t = strings[i].text;
+      for (var j = 0; j < t.length; j++) set.add(t[j]);
+    }
+    return set;
+  }
+
+  /**
+   * edits: [{off, text}]  (off = payload-relative offset of the record)
+   * rec:   map off -> {slot, text} from the selected pool
+   */
+  function applyEdits(payload, edits, rec) {
+    var results = [];
+    for (var i = 0; i < edits.length; i++) {
+      var e = edits[i];
+      var r = rec[e.off];
+      if (!r) { results.push({ off: e.off, ok: false, msg: '记录不存在（可能选错了语言池）' }); continue; }
+      var enc;
+      try { enc = encodeUtf16LE(e.text); } catch (err) { results.push({ off: e.off, ok: false, msg: '编码失败' }); continue; }
+      if (enc.length === 0) { results.push({ off: e.off, ok: false, msg: '不能为空' }); continue; }
+      var bad = null;
+      for (var ci = 0; ci < e.text.length; ci++) {
+        var cu = e.text.charCodeAt(ci);
+        if (!allowedUnit(cu)) { bad = e.text[ci] + ' (U+' + cu.toString(16).toUpperCase() + ')'; break; }
+      }
+      if (bad) { results.push({ off: e.off, ok: false, msg: '包含不支持的字符：' + bad }); continue; }
+      if (enc.length + 2 > r.slot) {
+        results.push({ off: e.off, ok: false, msg: '太长：需要 ' + (enc.length + 2) + ' B，槽位只有 ' + r.slot + ' B（最多 ' + Math.floor((r.slot - 2) / 2) + ' 字）' });
+        continue;
+      }
+      for (var q = 0; q < enc.length; q++) payload[e.off + q] = enc[q];
+      for (var z = e.off + enc.length; z < e.off + r.slot; z++) payload[z] = 0;
+      results.push({ off: e.off, ok: true, slot: r.slot, used: enc.length + 2, oldText: r.text });
+    }
+    return results;
+  }
+
+  /* ------------------------------------------------------------- one-shot */
+  function analyze(buf) {
+    var header = parseHeader(buf);
+    var headerU32s = [];
+    var lim = Math.min(buf.length, 0x400);
+    for (var o = 0; o + 4 <= lim; o += 4) headerU32s.push(u32(buf, o));
+    var payloadOffset = null, mainBody = null;
+    var candidates = [0x274, header.headerSize, 0x214, 0x378, header.headerSize + 0x60];
+    for (var i = 0; i < candidates.length; i++) {
+      var po = candidates[i];
+      if (po <= 0 || po >= buf.length) continue;
+      var pay = decodePayload(buf, po);
+      var mb = detectMainBody(pay, header.checksum, headerU32s);
+      if (mb) { payloadOffset = po; mainBody = mb; break; }
+    }
+    if (payloadOffset === null) {
+      // fall back: assume type-6 layout and report checksum mismatch
+      payloadOffset = header.headerSize + 0x60;
+      var pay2 = decodePayload(buf, payloadOffset);
+      var mb2 = detectMainBody(pay2, header.checksum, headerU32s);
+      if (mb2) mainBody = mb2;
+    }
+    var payload = decodePayload(buf, payloadOffset);
+    var pools = detectPools(payload);
+    return {
+      header: header, payloadOffset: payloadOffset, payload: payload,
+      mainBodyLen: mainBody ? mainBody.len : null,
+      checksumOk: !!mainBody,
+      pools: pools
+    };
+  }
+
+  function buildPatched(orig, state) {
+    var ck = checksumOf(state.payload, state.mainBodyLen);
+    var out = encodeFile(orig, state.payloadOffset, state.header.checksumOffset, state.payload);
+    w32(out, state.header.checksumOffset, ck);
+    return { buf: out, checksum: ck };
+  }
+
+  function verifyPatched(outBuf, state, edits) {
+    var header = parseHeader(outBuf);
+    var payload = decodePayload(outBuf, state.payloadOffset);
+    var ck = checksumOf(payload, state.mainBodyLen);
+    var readBack = [];
+    for (var i = 0; i < edits.length; i++) {
+      var e = edits[i];
+      var r = decodeString(payload, e.off, Math.min(payload.length, e.off + 4096));
+      readBack.push({ off: e.off, text: r ? r.text : null, match: !!r && r.text === e.text });
+    }
+    return {
+      checksumField: header.checksum,
+      checksumCalc: ck,
+      checksumOk: header.checksum === ck,
+      versionText: header.versionText,
+      readBack: readBack,
+      allReadBackOk: readBack.every(function (x) { return x.match; }),
+      sizeOk: outBuf.length === (state.origLength || outBuf.length)
+    };
+  }
+
+  return {
+    CODE_SIZES: CODE_SIZES,
+    parseHeader: parseHeader,
+    decodePayload: decodePayload,
+    checksumOf: checksumOf,
+    detectMainBody: detectMainBody,
+    findFdlBundles: findFdlBundles,
+    detectPools: detectPools,
+    pickBestPool: pickBestPool,
+    extractStrings: extractStrings,
+    classifyStrings: classifyStrings,
+    charsetOf: charsetOf,
+    applyEdits: applyEdits,
+    analyze: analyze,
+    buildPatched: buildPatched,
+    verifyPatched: verifyPatched,
+    langLabel: langLabel,
+    allowedUnit: allowedUnit
+  };
+});
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var core = window.FwPatchCore;
+  if (!core) {
+    document.body.insertAdjacentHTML('afterbegin',
+      '<div class="warnbox" style="margin:18px">patch-core.js 没有加载成功：请把 patch-core.js 和本页面放在同一个文件夹里。</div>');
+    return;
+  }
+
+  var S = {
+    fileName: '', buf: null, st: null,
+    pool: null, records: [], charset: null,
+    edits: new Map(),
+    page: 0, pageSize: 100,
+    search: '', onlyEdited: false, onlyCJK: false
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function hex(n) { return '0x' + (n >>> 0).toString(16).toUpperCase().padStart(8, '0'); }
+  function fmtSize(n) { return n.toLocaleString('en-US') + ' B (' + hex(n) + ')'; }
+
+  /* ------------------------------------------------------------ file load */
+  var drop = $('drop'), fileInput = $('file');
+  drop.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    var f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  function loadFile(file) {
+    $('fileErr').classList.add('hidden');
+    S.fileName = file.name;
+    setEditState('读取中…');
+    file.arrayBuffer().then(function (ab) {
+      S.buf = new Uint8Array(ab);
+      S.edits.clear();
+      setEditState('分析中…');
+      setTimeout(function () {
+        try {
+          S.st = core.analyze(S.buf);
+        } catch (e) {
+          $('fileErr').classList.remove('hidden');
+          $('fileErr').textContent = '解析失败：' + e.message;
+          return;
+        }
+        renderInfo();
+        renderPools();
+        var best = core.pickBestPool(S.st.pools, 'zh-Hans');
+        if (best) selectPool(best);
+        $('drop').innerHTML = '<div class="big">已加载：<span class="mono"></span></div>' +
+          '<div class="hint">点击这里或拖入新文件可重新选择</div>';
+        $('drop').querySelector('.mono').textContent = S.fileName + ' · ' + S.buf.length.toLocaleString('en-US') + ' B';
+      }, 30);
+    });
+  }
+  function setEditState(t) { $('drop').innerHTML = '<div class="big">' + t + '</div>'; }
+
+  /* ---------------------------------------------------------------- info */
+  function renderInfo() {
+    var h = S.st.header, g = $('infoGrid');
+    var ckOk = S.st.checksumOk;
+    g.innerHTML = '';
+    [
+      ['文件名', S.fileName],
+      ['文件大小', S.buf.length.toLocaleString('en-US') + ' B'],
+      ['容器类型 os_type', String(h.os) + '（model-code ' + h.codeSize + ' B）'],
+      ['固件版本', h.versionText],
+      ['头内校验和', hex(h.checksum)],
+      ['载荷起点', hex(S.st.payloadOffset)],
+      ['主校验区长度', S.st.mainBodyLen ? hex(S.st.mainBodyLen) : '未识别'],
+      ['校验和验证', ckOk ? '通过（公式匹配）' : '⚠ 未匹配（仍可改，但请谨慎）'],
+      ['检测到语言池', S.st.pools.length + ' 个']
+    ].forEach(function (kv) {
+      var d = document.createElement('div');
+      d.className = 'kv';
+      d.innerHTML = '<div class="k"></div><div class="v"></div>';
+      d.querySelector('.k').textContent = kv[0];
+      d.querySelector('.v').textContent = kv[1];
+      if (kv[0] === '校验和验证') {
+        var t = document.createElement('span');
+        t.className = 'tag ' + (ckOk ? 'ok' : 'warn');
+        t.textContent = kv[1];
+        d.querySelector('.v').textContent = '';
+        d.querySelector('.v').appendChild(t);
+      }
+      g.appendChild(d);
+    });
+    $('infoSection').classList.remove('hidden');
+    $('infoNote').textContent = ckOk
+      ? '校验和公式已验证：checksum = 0xFFFFFFFF − Σ(逻辑载荷[0..' + hex(S.st.mainBodyLen) + '])。修改文本后会按同一公式重算。'
+      : '未能用已知公式验证校验和，可能是新版本格式；工具仍会重算 0x20C，但请自行确认。';
+  }
+
+  /* --------------------------------------------------------------- pools */
+  function renderPools() {
+    var wrap = $('poolsWrap');
+    var tb = document.createElement('table');
+    tb.innerHTML = '<thead><tr><th style="width:46px"></th><th>语言</th><th>起点(文件)</th><th>结束(文件)</th>' +
+      '<th>记录数</th><th>含目标字符</th><th>覆盖率</th></tr></thead>';
+    var tbody = document.createElement('tbody');
+    S.st.pools.forEach(function (p) {
+      var tr = document.createElement('tr');
+      if (S.pool === p) tr.className = 'sel';
+      var tdR = document.createElement('td');
+      var r = document.createElement('input');
+      r.type = 'radio'; r.name = 'pool'; r.className = 'radio';
+      r.checked = (S.pool === p);
+      r.addEventListener('change', function () { selectPool(p); });
+      tdR.appendChild(r);
+      tr.appendChild(tdR);
+      var langChars = p.lang === 'zh-Hans' || p.lang === 'zh-Hant' ? '汉字 '
+        : p.lang === 'ja' ? '假名/汉字 ' : p.lang === 'ko' ? '谚文 ' : p.lang === 'ru' ? '西里尔 '
+        : p.lang === 'ar' ? '阿拉伯 ' : p.lang === 'th' ? '泰文 ' : '拉丁 ';
+      var c = p.counts;
+      var nLang = (p.lang === 'zh-Hans' || p.lang === 'zh-Hant') ? c.han
+        : p.lang === 'ja' ? c.kana : p.lang === 'ko' ? c.hangul
+        : p.lang === 'ru' ? c.cyr : p.lang === 'ar' ? c.arab
+        : p.lang === 'th' ? c.thai : c.latin;
+      [[core.langLabel(p.lang) + (p === core.pickBestPool(S.st.pools, 'zh-Hans') ? '  ★推荐' : ''), 'langLabel'], [hex(p.start + S.st.payloadOffset)],
+       [hex(p.end + S.st.payloadOffset)], [String(p.strings.length)],
+       [langChars + nLang], [(p.coverage * 100).toFixed(0) + '%']].forEach(function (cell, i) {
+        var td = document.createElement('td');
+        if (i === 0) td.className = 'langLabel';
+        td.textContent = cell[0];
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    tb.appendChild(tbody);
+    wrap.innerHTML = '';
+    wrap.appendChild(tb);
+    $('poolSection').classList.remove('hidden');
+  }
+
+  function selectPool(p) {
+    S.pool = p;
+    S.records = p.strings;
+    S.charset = core.charsetOf(p.strings);
+    S.edits.clear();
+    S.page = 0;
+    $('poolName').textContent = core.langLabel(p.lang) + ' · ' + p.strings.length + ' 条';
+    $('editorSection').classList.remove('hidden');
+    $('outSection').classList.remove('hidden');
+    renderPools();
+    renderRows();
+    updateStat();
+    $('charHint').textContent = '本池共使用 ' + S.charset.size + ' 个不同字符；新文本请尽量只用这些字，否则相机可能缺少字形。';
+    $('applyHint').textContent = '';
+    $('applyResult').innerHTML = '';
+  }
+
+  /* ------------------------------------------------ PUA glyph rendering */
+  /* 固件文本里的 U+E000..U+F8FF 是“内嵌图标”的字形码位；浏览器没有这些字形，
+     会显示成方块（tofu）。这里把它们渲染成小方块占位（显示码位末两位），
+     等图标字形提取完成后，填入 GLYPHS + SPRITE 即可自动换成真实图标。 */
+  var GLYPHS = {};   // "F2EF" -> {x,y,w,h}
+  var SPRITE = '';   // "data:image/png;base64,..."
+  function isPUA(c) { return c >= 0xE000 && c <= 0xF8FF; }
+  function hasPUA(s) {
+    for (var k = 0; k < s.length; k++) if (isPUA(s.charCodeAt(k))) return true;
+    return false;
+  }
+  function escHTML(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function renderPua(text) {
+    var out = '';
+    for (var k = 0; k < text.length; k++) {
+      var c = text.charCodeAt(k);
+      if (!isPUA(c)) { out += escHTML(text[k]); continue; }
+      var hx = c.toString(16).toUpperCase();
+      var g = GLYPHS[hx];
+      if (g && SPRITE) {
+        out += '<span class="gl" title="固件图标 U+' + hx + '" style="width:' + g.w + 'px;height:' + g.h + 'px;' +
+               'background-image:url(' + SPRITE + ');background-position:-' + g.x + 'px -' + g.y + 'px;"></span>';
+      } else {
+        out += '<span class="gl ph" title="固件图标 U+' + hx + '（字形未提取）">' + hx.slice(-2) + '</span>';
+      }
+    }
+    return out;
+  }
+  /* 字形数据就绪后调用：fillGlyphSprite({sprite:'data:...', glyphs:{...}}) */
+  window.fillGlyphSprite = function (d) {
+    if (d && d.sprite && d.glyphs) { SPRITE = d.sprite; GLYPHS = d.glyphs; renderRows(); }
+  };
+
+  /* ---------------------------------------------------------------- rows */
+  function filtered() {
+    var q = S.search.trim().toLowerCase();
+    var out = [];
+    for (var i = 0; i < S.records.length; i++) {
+      var r = S.records[i];
+      var ed = S.edits.get(r.off);
+      var shown = ed ? ed.text : r.text;
+      if (S.onlyEdited && !ed) continue;
+      if (S.onlyCJK && !/[\u3400-\u9FFF]/.test(r.text)) continue;
+      if (q && r.text.toLowerCase().indexOf(q) < 0 && String(shown).toLowerCase().indexOf(q) < 0) continue;
+      out.push(r);
+    }
+    return out;
+  }
+
+  function maxChars(slot) { return Math.floor((slot - 2) / 2); }
+
+  function validate(text, slot) {
+    if (!text.length) return { ok: false, msg: '不能为空' };
+    var enc = 0;
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      if (!core.allowedUnit(c)) return { ok: false, msg: '不支持的字符 U+' + c.toString(16).toUpperCase() };
+      enc += 2;
+    }
+    if (enc + 2 > slot) return { ok: false, msg: '太长：需要 ' + (enc + 2) + 'B，槽位 ' + slot + 'B（最多 ' + maxChars(slot) + ' 字）' };
+    return { ok: true, msg: '' };
+  }
+
+  function renderRows() {
+    var list = filtered();
+    var total = list.length;
+    var pages = Math.max(1, Math.ceil(total / S.pageSize));
+    if (S.page >= pages) S.page = pages - 1;
+    var start = S.page * S.pageSize;
+    var slice = list.slice(start, start + S.pageSize);
+    var tbody = $('rows');
+    tbody.innerHTML = '';
+    slice.forEach(function (r, i) {
+      var tr = document.createElement('tr');
+      var ed = S.edits.get(r.off);
+      var cur = ed ? ed.text : r.text;
+
+      var tdN = document.createElement('td');
+      tdN.className = 'off';
+      tdN.textContent = (start + i + 1);
+      tr.appendChild(tdN);
+
+      var tdOff = document.createElement('td');
+      tdOff.className = 'off mono';
+      tdOff.textContent = hex(r.off + S.st.payloadOffset);
+      tr.appendChild(tdOff);
+
+      var tdSlot = document.createElement('td');
+      tdSlot.className = 'off mono';
+      tdSlot.textContent = r.slot + 'B/' + maxChars(r.slot) + '字';
+      tr.appendChild(tdSlot);
+
+      var tdOld = document.createElement('td');
+      tdOld.innerHTML = renderPua(r.text);
+      tr.appendChild(tdOld);
+
+      var tdNew = document.createElement('td');
+      tdNew.className = 'txt';
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = cur;
+      inp.spellcheck = false;
+      var prev = document.createElement('div');
+      prev.className = 'inprev';
+      if (hasPUA(cur)) prev.innerHTML = renderPua(cur);
+      var tdSt = document.createElement('td');
+      tdSt.className = 'st';
+
+      function refresh() {
+        var t = inp.value;
+        if (prev) prev.innerHTML = hasPUA(t) ? renderPua(t) : '';
+        if (t === r.text) {
+          S.edits.delete(r.off);
+          inp.classList.remove('inp-err');
+          setTag(tdSt, '', '');
+          tr.classList.remove('sel');
+        } else {
+          var v = validate(t, r.slot);
+          if (v.ok) {
+            S.edits.set(r.off, { text: t, old: r.text });
+            inp.classList.remove('inp-err');
+            setTag(tdSt, '已修改', 'ok');
+            tr.classList.add('sel');
+          } else {
+            S.edits.delete(r.off);           // 非法内容不参与生成，避免误用旧值
+            inp.classList.add('inp-err');
+            setTag(tdSt, '⚠ ' + v.msg, 'err');
+          }
+        }
+        updateStat();
+      }
+      inp.addEventListener('input', refresh);
+      tdNew.appendChild(inp);
+      tdNew.appendChild(prev);
+      tr.appendChild(tdNew);
+      tr.appendChild(tdSt);
+      tbody.appendChild(tr);
+      if (ed) setTag(tdSt, '已修改', 'ok');
+    });
+    $('pageInfo').textContent = '第 ' + (S.page + 1) + ' / ' + pages + ' 页 · 共 ' + total + ' 条 · 已修改 ' + S.edits.size + ' 条';
+    $('prevPage').disabled = S.page <= 0;
+    $('nextPage').disabled = S.page >= pages - 1;
+  }
+
+  function setTag(td, text, cls) {
+    td.innerHTML = '';
+    if (!text) return;
+    var t = document.createElement('span');
+    t.className = 'tag ' + (cls || 'info');
+    t.textContent = text;
+    td.appendChild(t);
+  }
+
+  function updateStat() {
+    $('editStat').textContent = '已修改 ' + S.edits.size + ' 条';
+    var p = $('pageInfo');
+    if (p) {
+      var list = filtered();
+      var pages = Math.max(1, Math.ceil(list.length / S.pageSize));
+      p.textContent = '第 ' + (S.page + 1) + ' / ' + pages + ' 页 · 共 ' + list.length + ' 条 · 已修改 ' + S.edits.size + ' 条';
+    }
+  }
+
+  /* -------------------------------------------------------------- filters */
+  var timer = null;
+  $('search').addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      S.search = $('search').value;
+      S.page = 0;
+      renderRows();
+    }, 160);
+  });
+  $('onlyEdited').addEventListener('change', function () { S.onlyEdited = this.checked; S.page = 0; renderRows(); });
+  $('onlyCJK').addEventListener('change', function () { S.onlyCJK = this.checked; S.page = 0; renderRows(); });
+  $('pageSize').addEventListener('change', function () {
+    S.pageSize = parseInt(this.value, 10) || 100; S.page = 0; renderRows();
+  });
+  $('prevPage').addEventListener('click', function () { if (S.page > 0) { S.page--; renderRows(); } });
+  $('nextPage').addEventListener('click', function () { S.page++; renderRows(); });
+  $('btnResetAll').addEventListener('click', function () {
+    if (!S.edits.size) return;
+    if (!confirm('撤销全部修改？')) return;
+    S.edits.clear(); S.page = 0; renderRows();
+  });
+
+  /* -------------------------------------------------------- import/export */
+  $('btnExportJson').addEventListener('click', function () {
+    var arr = [];
+    S.edits.forEach(function (v, k) {
+      arr.push({ offset: hex(k + S.st.payloadOffset), payload_offset: hex(k), lang: S.pool.lang, old: v.old, new: v.text });
+    });
+    var blob = new Blob([JSON.stringify(arr, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = S.fileName.replace(/\.DAT$/i, '') + '_langpatch.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  });
+  $('btnImportJson').addEventListener('click', function () { $('importJson').click(); });
+  $('importJson').addEventListener('change', function () {
+    var f = this.files[0];
+    if (!f) return;
+    f.text().then(function (txt) {
+      var arr;
+      try { arr = JSON.parse(txt); } catch (e) { alert('JSON 解析失败：' + e.message); return; }
+      var byOff = {};
+      S.records.forEach(function (r) { byOff[r.off] = r; });
+      var bad = 0, ok = 0;
+      arr.forEach(function (it) {
+        var off = it.payload_offset ? parseInt(it.payload_offset, 16)
+          : (it.offset ? parseInt(it.offset, 16) - S.st.payloadOffset : NaN);
+        var r = byOff[off];
+        if (!r) { bad++; return; }
+        var v = validate(it.new, r.slot);
+        if (!v.ok) { bad++; return; }
+        S.edits.set(off, { text: it.new, old: r.text });
+        ok++;
+      });
+      renderRows();
+      alert('导入完成：成功 ' + ok + ' 条' + (bad ? '，忽略 ' + bad + ' 条（偏移不在当前池/超长）' : ''));
+    });
+    this.value = '';
+  });
+
+  /* ---------------------------------------------------------------- apply */
+  function collectEdits() {
+    var rec = {};
+    S.records.forEach(function (r) { rec[r.off] = { slot: r.slot, text: r.text }; });
+    var edits = [];
+    S.edits.forEach(function (v, k) { edits.push({ off: k, text: v.text }); });
+    return { rec: rec, edits: edits };
+  }
+
+  function doApply(download) {
+    var resBox = $('applyResult');
+    resBox.innerHTML = '';
+    var log = $('log');
+    log.classList.remove('hidden');
+    log.textContent = '';
+
+    if (!S.edits.size) {
+      log.textContent = '没有修改内容。请在「编辑文本」里改动至少一条。';
+      return;
+    }
+    var c = collectEdits();
+    var payload = S.st.payload.slice();
+    var results = core.applyEdits(payload, c.edits, c.rec);
+    var bad = results.filter(function (r) { return !r.ok; });
+    var okN = results.length - bad.length;
+    log.textContent += '编辑 ' + results.length + ' 条：成功 ' + okN + ' 条' + (bad.length ? '，失败 ' + bad.length + ' 条' : '') + '\n';
+    bad.forEach(function (b) { log.textContent += '  失败 ' + hex(b.off + S.st.payloadOffset) + '：' + b.msg + '\n'; });
+    if (bad.length) {
+      var d = document.createElement('div');
+      d.className = 'warnbox';
+      d.textContent = '有 ' + bad.length + ' 条修改无法应用，已中止。请修正后再试。';
+      resBox.appendChild(d);
+      return;
+    }
+
+    var state = {
+      payload: payload,
+      payloadOffset: S.st.payloadOffset,
+      mainBodyLen: S.st.mainBodyLen,
+      header: S.st.header,
+      origLength: S.buf.length
+    };
+    var patched = core.buildPatched(S.buf, state);
+    var ver = core.verifyPatched(patched.buf, state, c.edits);
+
+    // byte diff
+    var diff = 0;
+    for (var i = 0; i < S.buf.length; i++) if (S.buf[i] !== patched.buf[i]) diff++;
+
+    log.textContent += '文件大小：' + patched.buf.length + ' B（原 ' + S.buf.length + ' B）' +
+      (patched.buf.length === S.buf.length ? '  ✓ 未改变' : '  ⚠ 改变') + '\n';
+    log.textContent += '校验和：原 ' + hex(S.st.header.checksum) + ' → 新 ' + hex(patched.checksum) + '\n';
+    log.textContent += '校验回读：' + (ver.checksumOk ? '✓ 通过' : '✗ 失败') + '\n';
+    log.textContent += '文本回读：' + (ver.allReadBackOk ? '✓ 全部匹配' : '✗ 有不匹配') + '\n';
+    log.textContent += '实际改动字节：' + diff + ' B\n';
+    ver.readBack.forEach(function (rb) {
+      log.textContent += '  ' + hex(rb.off + S.st.payloadOffset) + '  ' + JSON.stringify(rb.text) + (rb.match ? '  ✓' : '  ✗') + '\n';
+    });
+
+    var box = document.createElement('div');
+    box.className = (ver.checksumOk && ver.allReadBackOk) ? 'okbox' : 'warnbox';
+    box.innerHTML = (ver.checksumOk && ver.allReadBackOk
+      ? '补丁已生成并通过校验：改 ' + okN + ' 条文本，改动 ' + diff + ' 字节，校验和已重算。'
+      : '补丁已生成，但校验/回读有问题，请勿直接刷机。');
+    resBox.appendChild(box);
+
+    if (download) {
+      var name = S.fileName.replace(/\.DAT$/i, '') + '_lang.DAT';
+      if (!/\.DAT$/i.test(name)) name += '.DAT';
+      var blob = new Blob([patched.buf], { type: 'application/octet-stream' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      log.textContent += '已开始下载：' + name + '\n';
+    }
+  }
+  $('btnApply').addEventListener('click', function () { doApply(true); });
+  $('btnCheck').addEventListener('click', function () { doApply(false); });
+})();
+</script>
+</body>
+</html>
