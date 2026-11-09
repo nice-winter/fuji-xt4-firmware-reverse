@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Node test for web/patch-core.js against the real FWUP0024 firmware. */
+/* Node test for web/patch-core.js against the real modified build firmware. */
 'use strict';
 const fs = require('fs');
 const path = require('path');

@@ -160,7 +160,7 @@ def main():
     adec, bdec = decoded_view(a), decoded_view(b)
 
     p("=" * 78)
-    p("FWUP0024 diff:  modified build  vs  official X-T4 v2.12")
+    p("FWUP0024 diff:  earlier build  vs  official X-T4 v2.12")
     p("=" * 78)
     p()
     p("== 1. files ==")

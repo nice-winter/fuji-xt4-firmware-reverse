@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Minimal-DOM smoke test: run web/index.html's inline app script in Node,
-   feed it the real FWUP0024 firmware, edit a string, and press "只校验". */
+   feed it the real modified build firmware, edit a string, and press "只校验". */
 'use strict';
 const fs = require('fs');
 const path = require('path');

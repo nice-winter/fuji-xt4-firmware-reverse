@@ -18,13 +18,14 @@
 
 | 脚本 | 用途 |
 |---|---|
-| `setp_decode.py` | 解压段加载基址、标识符池、`{name_ptr,index}` 枚举名表注册表、UI SETP ID 表（`verify` / `pools` / `registry` / `all`） |
+| `setp_decode.py` | SETP 注册表、胶片模拟枚举名表、UI SETP ID 表解析（`verify` / `pools` / `registry` / `filmsim` / `labels` / `all`） |
+| `fsim_ui_scan.py` | 胶片模拟选择界面数据链扫描（SETP 1070 选项表 + 子 SETP 指针 + 补丁点） |
 
 ## FDL Font 资源
 
 | 脚本 | 用途 |
 |---|---|
-| `fdl_bundle.py` | FDL Font 包结构解析（`report` / `header` / `blocks` / `labels` / `entries` / `patchmap`） |
+| `fdl_bundle.py` | FDL Font 包结构解析（`report` / `header` / `blocks` / `film` / `labels` / `entries` / `patchmap`） |
 | `fdl_glyphs.py` | 图标字形提取（`report` / `export`）：cmap、loca 表、矢量轮廓 → PNG + sprite + JSON |
 
 ## 语言文本
@@ -36,6 +37,12 @@
 | `ui_charset.py` | 池内字符集统计（改文本时的"缺字形"风险提示） |
 | `ui_pool_ranges.py` | 语言池边界/覆盖范围分析 |
 | `ui_patch.py` | 命令行版文本补丁器（校验和重算 + 回读验证） |
+
+## 已验证的固件补丁
+
+| 脚本 | 用途 |
+|---|---|
+| `patch_no_reala_rightcol.py` | **移除 REALA ACE 右列（+R/+Ye/+G）**：清 SETP 1070 表 value=7 的子 SETP 指针（含 movie 表），已上机验证；生成 `out/patch_no_reala_rightcol.DAT` |
 
 ## 前端工具构建 / 测试
 
@@ -52,5 +59,5 @@
 
 * **只读**输入固件：所有脚本只 `open(...,'rb')`，不会修改 `.DAT`。
 * 派生数据写 `out/`，文档写 `docs/`。
-* 一次性探针脚本（`_probe_*`、`setp_explore*`、`lead_*` 等）是逆向过程中的临时工具，
+* 一次性探针脚本（`_probe_*`、`setp_explore*`、`lead_*`、`fsim_*` 等）是逆向过程中的临时工具，
   已在 `.gitignore` 中排除，未随仓库发布。

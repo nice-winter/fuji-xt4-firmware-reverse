@@ -24,7 +24,7 @@
 
 ## 结论 3：内含真实相机资源
 取反后 `0x468DB9` 起出现 `RIFF WAVEfmt`、`xpacket begin=`（XMP）、大量 UI 资源名：
-`MENU_FLASH_MODE_TTL`、`STROBE_TTL`、`ISO_BRACK`、`某 ASCII 串`、`INSTAX_PASSWORD_DIGIT4`、`LENS_DETOFF` …（数万条）
+`MENU_FLASH_MODE_TTL`、`STROBE_TTL`、`ISO_BRACK`、`FILM_PROVIA`、`INSTAX_PASSWORD_DIGIT4`、`LENS_DETOFF` …（数万条）
 → 解码后的镜像可正常做字符串/资源分析。
 
 ## 对成员的要求

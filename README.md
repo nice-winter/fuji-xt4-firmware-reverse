@@ -12,9 +12,9 @@
 
 | 内容 | 说明 |
 |---|---|
-| **格式文档** | 容器头、校验和（7 个）、FFLZ 压缩段、FDL Font 资源包（图标字体）、SETP/UI 资源表、语言文本池 |
+| **格式文档** | 容器头、校验和（7 个）、FFLZ 压缩段、FDL Font 资源包、SETP/UI 资源表、语言文本池、胶片模拟枚举表 |
 | **语言补丁工具** | `web/FWUP语言补丁工具.html`：拖入固件 → 自动定位语言池 → 原位改文本 → 重算校验和 → 下载完整固件 |
-| **分析脚本** | `tools/`：解包解码、压缩流溯源、SETP 解析、FDL 字形提取、官方/二改差异对比、页面测试 |
+| **分析/补丁脚本** | `tools/`：解包解码、压缩流溯源、SETP 解析、字形提取、官方/二改 diff、已验证的胶片模拟补丁 |
 | **研究笔记** | `docs/notes/`：逐专题的过程与结论（含证据强度标注：确证/强/推测/未定位） |
 
 ### 解出来的关键结构（摘要）
@@ -106,6 +106,7 @@ python3 tools/verify_js_patch.py                          # 独立复核 JS 生�
 * [`docs/FIRMWARE-STRUCTURE.md`](docs/FIRMWARE-STRUCTURE.md) — 总格式文档
 * [`docs/notes/07-ui-text-sc.md`](docs/notes/07-ui-text-sc.md) — 简中文本池的定位与结构
 * [`docs/notes/08-locale-patch-web-tool.md`](docs/notes/08-locale-patch-web-tool.md) — 补丁工具设计与实现
+* [`docs/notes/15-patch-no-reala-rightcol.md`](docs/notes/15-patch-no-reala-rightcol.md) — 已验证的"胶片模拟子选项"数据补丁（4 字节级）
 * [`docs/notes/16-fdl-glyph-extract.md`](docs/notes/16-fdl-glyph-extract.md) — FDL 图标字体格式（矢量轮廓）逆向
 
 ---
@@ -114,8 +115,10 @@ python3 tools/verify_js_patch.py                          # 独立复核 JS 生�
 
 1. **图标字形渲染语义未闭环**：cmap/loca/记录 framing/指令集已解出，但轮廓点序与曲线类型尚未确定，
    直出图形有交叉瑕疵（见 `docs/notes/16-fdl-glyph-extract.md` §10）。页面暂用占位徽章。
-2. 工具只针对 **X-T4 / FWUP0024 v2.12 派生**固件验证；其它机型/版本可能格式不同（可作参考）。
-3. 语言池记录是**预切片段**，只能在原槽位内改文本；新增/重排字符串需先解出字符串引用索引（未做）。
+2. **胶片模拟 Q 菜单**的"平坦 18 项值表"深度共享 FFLZ 回溯引用，原地改会污染同字节的兄弟表；
+   要彻底处理需重压缩 sec0（方案已写进 `docs/notes/15-patch-no-reala-rightcol.md` §7）。
+3. 工具只针对 **X-T4 / FWUP0024 v2.12 派生**固件验证；其它机型/版本可能格式不同（可作参考）。
+4. 语言池记录是**预切片段**，只能在原槽位内改文本；新增/重排字符串需先解出字符串引用索引（未做）。
 
 ---
 

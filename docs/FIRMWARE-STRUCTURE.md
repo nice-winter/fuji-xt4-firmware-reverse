@@ -80,7 +80,7 @@ SHA-256       618A3EDD307496E93CACB38F51AC128A904E2BB713DE9022D37BC8FE162C783F
 ⇒ **20.3% 的字节差异 ≈ 55.6 KB 真实内容改动 + LZ 级联假象**。
 另：两文件压缩流的**流首相同长度**分别为 sec0 `720,271 B`、sec3 `10,668 B`、sec1 `46 B`、sec2 整条 ⇒ 是**同一套 LZ 参数重新压缩**，不是换了压缩器。
 
-**尾部新增内容**：`[0x1D28817, EOF)` 区间里，本文件比官方**多写了 17,690 B**（约 70 个 ≈500 B 块、以 `0x40000` 为周期），内容是 **UTF-16LE 多语言界面文本**（德语 `Kräftige S…`、意大利语 `TINTE AMBR…`、印尼语 `Warna ambe…`、英语 `示例标签 B`）；这些串在官方文件中 0 命中。该区两侧都含 ASCII `"info"` 标记与 `(偏移,大小)` 8 字节表项 ⇒ 是**带命名条目的目录/资源区**，非纯填充。另有 912 B 仅官方有、27,556 B 两侧都有但不同。【确证（事实）/ 推测（原因）】
+**尾部新增内容**：`[0x1D28817, EOF)` 区间里，本文件比官方**多写了 17,690 B**（约 70 个 ≈500 B 块、以 `0x40000` 为周期），内容是 **UTF-16LE 多语言界面文本**（德语 `Kräftige S…`、意大利语 `TINTE AMBR…`、印尼语 `Warna ambe…`、英语 `NOSTALGIC Neg.`）；这些串在官方文件中 0 命中。该区两侧都含 ASCII `"info"` 标记与 `(偏移,大小)` 8 字节表项 ⇒ 是**带命名条目的目录/资源区**，非纯填充。另有 912 B 仅官方有、27,556 B 两侧都有但不同。【确证（事实）/ 推测（原因）】
 
 ---
 
@@ -209,7 +209,7 @@ slot11..31: 0x00000000
 | 13 | `0x1A00274` | **FFLZ 段 3** | `unpacked=6,446,348` `packed=3,310,991` `pages=203` | → 纯数据（索引表/资源） |
 | 14 | `0x1820274` | 段 | `0x20000` | 未定性 |
 | 15 | `0x1860274` | 段 | `0x1766E0` | 未定性 |
-| 16 | `0x1DA0274` | **UI 文本资源区（UTF-16LE）** | ~`0xFBF000` | 每 `0x40000` 一块，块内 2 条记录（约 `+0x3A` 与 `+0x174`），共约 **70 份**；内容为 UTF-16LE 界面文本，例如 `示例标签 A`、`示例标签 B`、`CLASSIC …`（各 70 次）。承载多语言/多菜单字符串包；`早期二改` 相对官方在此区**新增 17,690 B 文本** |
+| 16 | `0x1DA0274` | **UI 文本资源区（UTF-16LE）** | ~`0xFBF000` | 每 `0x40000` 一块，块内 2 条记录（约 `+0x3A` 与 `+0x174`），共约 **70 份**；内容为 UTF-16LE 界面文本，例如 `REALA ACE`、`NOSTALGIC Neg.`、`CLASSIC …`（各 70 次）。承载多语言/多菜单字符串包；`早期二改` 相对官方在此区**新增 17,690 B 文本** |
 | 17 | `0x2FC0294` | **尾部 region 组 R0..R5** | 1,208,116 B | 见 §6.2 |
 
 **补充区段（来自 `02-map.md` 的独立测绘，用于细化上表）**
@@ -346,7 +346,7 @@ token >= 0x80: 双字节回溯。读下一字节 B：
 
 | 段 | 大小 | 性质 | 证据 |
 |---|---|---|---|
-| sec0 | 7.42 MB | **主应用 / UI 控制层**（含资源）；ARM 指令流（arm 中位覆盖率 **0.997**，thumb 中位 0.138） | 25,087 条可读串；`uicom_svc_composite_recinput_focusmode(1..3)`、`uicom_svc_setp2dsckeyword_*`、`lenscomtsk fail`、`biscomtsk fail`、`ERR_SYSTEM_HALT`；`MOVIE`×1024、`LENS`×353；内嵌 `RIFF/WAVE`、`XMP(<?xpacket)`、`Exif`、大量 `MENU_*`/`ISO_BRACK`/`某 ASCII 串` 型 UI 标识符 |
+| sec0 | 7.42 MB | **主应用 / UI 控制层**（含资源）；ARM 指令流（arm 中位覆盖率 **0.997**，thumb 中位 0.138） | 25,087 条可读串；`uicom_svc_composite_recinput_focusmode(1..3)`、`uicom_svc_setp2dsckeyword_*`、`lenscomtsk fail`、`biscomtsk fail`、`ERR_SYSTEM_HALT`；`MOVIE`×1024、`LENS`×353；内嵌 `RIFF/WAVE`、`XMP(<?xpacket)`、`Exif`、大量 `MENU_*`/`ISO_BRACK`/`FILM_PROVIA` 型 UI 标识符 |
 | sec1 | 9.44 MB | **带 POSIX/libc 的组件**；ARM（arm 中位覆盖率 **1.000**） | `POSIXLY_CORRECT`、`is ambiguous (could be `、`invalid option -- `、`argument required for option `、完整 errno 文案（`No such file or directory`/`Exec format error`/`Bad file number`…）；`MOVIE`×726、`LENS`×162、`<?xml`×2 |
 | sec2 | 10.24 MB | **网络/通信栈**（+调试/UI 辅助）；ARM（arm 中位覆盖率 **1.000**） | `MAC ADDRESS:`、`IP ADDRESS:`、`API_INFO:`、`FncAdr:0x`、`KEY_LOG:(`、`STM Transition Log:`、`Software Version:`、`EEP Adjust Date(MM/dd):`、`ltUiLib.dispId=`、`GET_KEY_FAILED`、`Hello world`、`FOCAL LENGTH`/`COLOR SPACE`/`LENS MODULATION OPT.`。**官方与本文件此段完全一致** |
 | sec3 | 6.45 MB | **纯数据**（索引表/资源，非代码；arm 中位 0.145 / thumb 中位 0.216，均不可信） | 仅 5 条 ≥10 字符可读串；开头为 u16 递增表 `14 00 18 00 1E 00 24 00 30 00 …`；疑似字库/位图/查找表 |
@@ -370,8 +370,8 @@ token >= 0x80: 双字节回溯。读下一字节 B：
 4. **元数据模板**：`<?xpacket begin=`/`end=`（XMP）、`Exif`、`FUJIFILM M-RAW`、`DevelopMent`、`TAG Version`。
 5. **UI 字符串/标识符表**：数万条 `MENU_*`、`ITEM_*`、`*_KIND_*`、`*_MODE` 等。
 6. **尾部双份数据**：`file 0x30A0000`（R4 内 +0xE38）与 `file 0x30D0000`（R5 内 +0xE38）各有一份**完全相同的 0x49A2 字节**块。
-7. **UI 文本资源区（UTF-16LE）**：`decoded 0x1E9E3AE..0x2720174`（`file 0x1DA0272..0x2D40274` 一带，每 `0x40000` 一块），每块含 2 条 UTF-16LE 字符串记录；`示例标签 A`、`示例标签 B`、`CLASSIC …` 各出现 **70 次**。记录结构形如 `<UTF-16LE 串><NUL><u32 标志/长度><...><填充>`，块内用 `0xFF` 补空。这是本文件里除压缩段之外最大的一块**可读资源**。
-   * `早期二改` 与官方的差异里有 17,690 B 落在本区（官方为 `0xFF`）→ 本构建**新增/改写了部分界面文本**（例如 `示例标签 B` / `示例标签 A` 在官方 v2.12 中 0 命中、本文件各 70 命中）。
+7. **UI 文本资源区（UTF-16LE）**：`decoded 0x1E9E3AE..0x2720174`（`file 0x1DA0272..0x2D40274` 一带，每 `0x40000` 一块），每块含 2 条 UTF-16LE 字符串记录；`REALA ACE`、`NOSTALGIC Neg.`、`CLASSIC …` 各出现 **70 次**。记录结构形如 `<UTF-16LE 串><NUL><u32 标志/长度><...><填充>`，块内用 `0xFF` 补空。这是本文件里除压缩段之外最大的一块**可读资源**。
+   * `早期二改` 与官方的差异里有 17,690 B 落在本区（官方为 `0xFF`）→ 本构建**新增/改写了部分界面文本**（例如 `NOSTALGIC Neg.` / `REALA` 在官方 v2.12 中 0 命中、本文件各 70 命中）。
    * **本地化细节已单独整理** → `07-ui-text-sc.md`：该区实为 `"FDL Font"` 资源包（`decoded 0x1DA0274`）内的**分语种文本池**；**简体中文池 = `decoded 0x1FB3244..0x1FC05F8`（54,196 B）**，含 4,041 条记录 / 3,160 条含中文文本 / 12,839 汉字 / 1,133 个不同字符；配套修改工具 `tools/ui_patch.py`（slot 校验 + 重算 `0x20C` + 取反写回 + 回读验证）。
 8. **文件尾**：`0x30D49A2..EOF` 全 0（75,814 B）。
 
@@ -385,7 +385,7 @@ token >= 0x80: 双字节回溯。读下一字节 B：
 | 2 | `file 0x2A8..0x377`（载荷偏移 `0x34..0x103`）26 条记录表的语义 | 明文域=Thumb 指针表 / 取反域=MMIO 地址表 | 反汇编目标地址 / 找读取它的代码 |
 | 3 | R2/R3 为何「未取反」（校验和按存储字节） | 校验和只有按 raw 命中 | 检查 updater 是否特判这两段 |
 | 4 | model-code 11 个槽的语义 | 两文件相同、双层 hex | 收集多机型 `FWUP00##.DAT` 做聚类 |
-| 5 | UI 文本资源区的记录格式 | 每 `0x40000` 块 2 条 UTF-16LE 记录，`示例标签 A`/`示例标签 B` 各 70 份 | 解析记录头，确认「70 份」的维度（语言？菜单？机型变体？） |
+| 5 | UI 文本资源区的记录格式 | 每 `0x40000` 块 2 条 UTF-16LE 记录，`REALA ACE`/`NOSTALGIC Neg.` 各 70 份 | 解析记录头，确认「70 份」的维度（语言？菜单？机型变体？） |
 | 6 | sec3 的数据格式 | u16 表开头、无字符串 | 试「字库/位图/LUT」三方向 |
 | 7 | sec1/sec2 对应的 CPU/子系统 | libc / 网络栈特征 | 与公开的 X-T4 组件清单交叉比对 |
 | 8 | `早期版` / `早期二改` | 公开零命中 | 与官方原件逐段解压后 diff |

@@ -77,7 +77,7 @@ OUTDIR = os.path.join(ROOT, "out", "glyphs")
 MAGIC = b"FDL Font\x00"
 BUNDLE0 = 0x1DA0274
 BLOCK0 = 0x1E9E000
-INFO_PAYLOAD = 0xA31C2          # current build
+INFO_PAYLOAD = 0xA31C2          # modified build
 INFO_SIZE = 0x7C
 GLYPH_BLOB = 0x3DCED            # == descriptor record offset
 CMAP_BASE = 0xE120              # glyph id = codepoint - CMAP_BASE
