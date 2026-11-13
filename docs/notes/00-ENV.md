@@ -3,9 +3,24 @@
 ## 目标文件 (read-only, 绝不修改)
 - Path: `C:\Users\90732\Desktop\dev\xt4\FWUP0024.DAT`
 - Size: 51,278,280 bytes = `0x30E71C8`
-- MD5: `73293B4F50269AD07FCD3AEF79B20D16`
-- SHA-256: `618A3EDD307496E93CACB38F51AC128A904E2BB713DE9022D37BC8FE162C783F`
+- SHA-256（实际工作副本，2026-11-13 核对）: `dfc9826991610aaa6c46f7c390c55019c1b8b57255c27ca72051434ef9d71ae3`
 - 用户要求：**只做逆向分析与结构文档，不做任何改动**。所有脚本只读该文件，产物写到 out/ 或 notes/。
+
+> ⚠️ 本节原记录（MD5 `73293B4F50269AD07FCD3AEF79B20D16`、SHA-256 `618A3EDD…`）对应的是
+> `FWUP0024_aefix_1106.DAT`（「早期二改 / AE 修正」版），该文件现仍在工作区但**已不是** `FWUP0024.DAT` 的内容。
+> 两条记录都保留：旧记录的偏移结论适用于 `aefix_1106`（=`618a3edd`），当前工作副本换成 1108 版后，
+> 做 diff/补丁前必须重新核对 SHA。完整身份对照见 `../CROSS-REF-CODEX.md` §1。
+
+### 工作区内的多份 X-T4 DAT（身份区分）
+| 文件 | SHA-256 | 角色 |
+|---|---|---|
+| `FWUP0024_aefix_1106.DAT` | `618a3edd3074…62c783f` | 「早期二改」；与 `xt4-codex` 的 `XT4_FLOG2_AUTO_SHUTTER_SYNC_TEST_618a3edd` 同一文件（F-Log2 自动快门同步测试候选） |
+| `FWUP0024.DAT` / `FWUP0024_affix_1108.DAT` | `dfc982699161…9d71ae3` | 当前 1108 工作副本（codex 侧身份：JPEG AF 网格修正测试包 `dfc98269`）；11–16 号笔记写作期的对照目标，其中 11–15 未随 `main` 发布 |
+| `out/official/FWUP0024_v212_official.DAT` | `853d273b5603…ed93bc5` | 富士官方 v2.12；`xt4-codex` 的「原厂」基准 |
+
+> 口径：**同一偏移在不同身份的文件里含义可能不同**。文档中凡出现"本文件"，以该篇笔记开头声明的
+> 目标 SHA 为准；没有声明的，按写作时间粗分（11-06 及以前 → `aefix_1106`；11-08 及以后 → 1108 工作副本）。
+> `08` 号笔记声明的 MD5 `695B0F76…` 未在本次身份表中定位（疑为语言补丁输出件），以该篇自述为准。
 
 ## Python
 `C:\Users\90732\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe` (3.12.14, numpy 2.3.5, pandas, Pillow)

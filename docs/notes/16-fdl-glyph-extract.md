@@ -5,6 +5,7 @@
 > 全程**只读**两个 `.DAT`（只 `open(...,"rb")`），产物只写 `out/glyphs/`、`out/_glyph_p*.txt`、`tools/fdl_glyphs.py`
 > 工具：`tools/fdl_glyphs.py`（`report` / `export`）；探针：`tools/_glyph_p1..p19.py`
 > 标记：【确证】= 双向验证 / 精确断言；【强】= 多项独立证据；【推测】= 未证实。
+> 交叉参考：codex 侧同类研究见 [21-filmsim-ui-crosscheck.md](21-filmsim-ui-crosscheck.md)。
 
 ---
 

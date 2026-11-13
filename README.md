@@ -16,6 +16,7 @@
 | **语言补丁工具** | `web/FWUP语言补丁工具.html`：拖入固件 → 自动定位语言池 → 原位改文本 → 重算校验和 → 下载完整固件 |
 | **分析脚本** | `tools/`：解包解码、压缩流溯源、SETP 解析、FDL 字形提取、官方/二改差异对比、页面测试 |
 | **研究笔记** | `docs/notes/`：逐专题的过程与结论（含证据强度标注：确证/强/推测/未定位） |
+| **交叉参考** | `docs/CROSS-REF-CODEX.md` + `docs/notes/20`–`24`：把本地详细研究快照 `xt4-codex` 中可公开表述的结论接进来（含候选固件状态矩阵） |
 
 ### 解出来的关键结构（摘要）
 
@@ -36,7 +37,8 @@
 ├── README.md
 ├── docs/
 │   ├── FIRMWARE-STRUCTURE.md      # 总文档：容器 / 校验和 / 段 / 资源地图
-│   └── notes/                     # 专题笔记（00-ENV, 01-container, ... 16-fdl-glyph-extract）
+│   ├── CROSS-REF-CODEX.md         # 交叉参考：与详细研究快照的关系、基准固件身份
+│   └── notes/                     # 专题笔记（00-ENV, 01-container, ... 16, 20–24 交叉补强）
 ├── tools/                         # 分析 & 补丁工具链（见 tools/README.md）
 └── web/
     ├── index.html                 # 开发版页面
@@ -104,9 +106,12 @@ python3 tools/verify_js_patch.py                          # 独立复核 JS 生�
 最值得先看的几篇：
 
 * [`docs/FIRMWARE-STRUCTURE.md`](docs/FIRMWARE-STRUCTURE.md) — 总格式文档
+* [`docs/CROSS-REF-CODEX.md`](docs/CROSS-REF-CODEX.md) — 与详细研究快照的交叉参考、**基准固件身份对照**（读偏移前必看）
 * [`docs/notes/07-ui-text-sc.md`](docs/notes/07-ui-text-sc.md) — 简中文本池的定位与结构
 * [`docs/notes/08-locale-patch-web-tool.md`](docs/notes/08-locale-patch-web-tool.md) — 补丁工具设计与实现
 * [`docs/notes/16-fdl-glyph-extract.md`](docs/notes/16-fdl-glyph-extract.md) — FDL 图标字体格式（矢量轮廓）逆向
+* [`docs/notes/24-hw-candidate-status.md`](docs/notes/24-hw-candidate-status.md) — 候选固件状态矩阵（实测通过/失败/未测）
+* [`docs/notes/22-flog2-iso-exposure.md`](docs/notes/22-flog2-iso-exposure.md) — F-Log2 / ISO / 曝光链研究现状
 
 ---
 
@@ -116,6 +121,11 @@ python3 tools/verify_js_patch.py                          # 独立复核 JS 生�
    直出图形有交叉瑕疵（见 `docs/notes/16-fdl-glyph-extract.md` §10）。页面暂用占位徽章。
 2. 工具只针对 **X-T4 / FWUP0024 v2.12 派生**固件验证；其它机型/版本可能格式不同（可作参考）。
 3. 语言池记录是**预切片段**，只能在原槽位内改文本；新增/重排字符串需先解出字符串引用索引（未做）。
+4. 工作区同时存在**官方 v2.12**、**1106 二改**、**1108 工作副本**三份不同 SHA 的 DAT；
+   "同一偏移"在三者间不一定同义。所有偏移结论以对应笔记开头声明的目标 SHA 为准，
+   身份对照见 [`docs/CROSS-REF-CODEX.md`](docs/CROSS-REF-CODEX.md) §1。
+5. `docs/notes/20`–`24` 是**交叉补强**笔记：只保留结论/方法/短证据，原始证据在本地详细快照
+   `xt4-codex`（不随本仓库发布）；其中"实机通过/失败"只对应记录的测试场景，不外推全功能。
 
 ---
 
